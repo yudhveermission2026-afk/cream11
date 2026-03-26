@@ -2,13 +2,15 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cream11 Phase 4</title>
+<title>Cream11 Phase 4 Updated</title>
 
 <style>
 body{font-family:sans-serif;background:#0f172a;color:#fff;margin:0;padding:16px}
 .btn{padding:10px;background:#22c55e;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:10px}
 .player{padding:8px;border:1px solid #334155;border-radius:8px;margin:5px;cursor:pointer}
 .selected{background:#22c55e;color:#000}
+.captain{border:2px solid gold}
+.vc{border:2px solid orange}
 .disabled{opacity:0.4;pointer-events:none}
 .row{display:flex;gap:10px}
 .col{flex:1}
@@ -17,58 +19,40 @@ body{font-family:sans-serif;background:#0f172a;color:#fff;margin:0;padding:16px}
 
 <body>
 
-<h2 id="title">Team Builder</h2>
-
-<button class="btn" onclick="logout()">Logout</button>
+<h2>Team Builder</h2>
 
 <div id="step1">
 <div id="playersContainer"></div>
-<button class="btn" onclick="goToCaptain()">Next (Select Captain)</button>
+<button class="btn" onclick="goToCaptain()">Next</button>
 </div>
 
 <div id="step2" style="display:none;">
-<h3>Select Captain (2x points)</h3>
-<div id="captainList"></div>
-
-<h3>Select Vice Captain (1.5x)</h3>
-<div id="vcList"></div>
-
+<h3>Select Captain & Vice Captain</h3>
+<div id="cvContainer"></div>
 <button class="btn" onclick="saveTeam()">Save Team</button>
 </div>
 
-<h3>My Teams</h3>
-<div id="myTeams"></div>
-
-<h3>Join Contest</h3>
-<button class="btn" onclick="joinContest()">Join (10 coins)</button>
-
-<h3>My Contests</h3>
-<div id="myContests"></div>
-
 <script>
 
-// ===== AUTH (simple) =====
-function logout(){
-  localStorage.removeItem('user');
-  location.reload();
-}
-if(!localStorage.getItem('user')){
-  localStorage.setItem('user','ok');
-}
-
-// ===== PLAYERS =====
+// ===== PLAYERS (FULL) =====
 const players=[
 {id:1,name:"Rohit",team:"A",role:"BAT",playing:true},
 {id:2,name:"Gill",team:"A",role:"BAT",playing:true},
 {id:3,name:"Ishan",team:"A",role:"WK",playing:true},
 {id:4,name:"Hardik",team:"A",role:"AR",playing:true},
-{id:5,name:"Bumrah",team:"A",role:"BOWL",playing:false},
+{id:5,name:"Bumrah",team:"A",role:"BOWL",playing:true},
+{id:6,name:"Surya",team:"A",role:"BAT",playing:true},
+{id:7,name:"Pant",team:"A",role:"WK",playing:true},
+{id:8,name:"Jadeja",team:"A",role:"AR",playing:true},
 
-{id:6,name:"Warner",team:"B",role:"BAT",playing:true},
-{id:7,name:"Smith",team:"B",role:"BAT",playing:true},
-{id:8,name:"Buttler",team:"B",role:"WK",playing:true},
-{id:9,name:"Stokes",team:"B",role:"AR",playing:true},
-{id:10,name:"Starc",team:"B",role:"BOWL",playing:false}
+{id:9,name:"Warner",team:"B",role:"BAT",playing:true},
+{id:10,name:"Smith",team:"B",role:"BAT",playing:true},
+{id:11,name:"Buttler",team:"B",role:"WK",playing:true},
+{id:12,name:"Stokes",team:"B",role:"AR",playing:true},
+{id:13,name:"Starc",team:"B",role:"BOWL",playing:true},
+{id:14,name:"Maxwell",team:"B",role:"AR",playing:true},
+{id:15,name:"Bairstow",team:"B",role:"WK",playing:true},
+{id:16,name:"Cummins",team:"B",role:"BOWL",playing:true}
 ];
 
 const roles=["WK","BAT","AR","BOWL"];
@@ -78,7 +62,7 @@ let selected=[];
 let captain=null;
 let vc=null;
 
-// ===== RENDER =====
+// ===== STEP 1 =====
 function render(){
   document.getElementById('playersContainer').innerHTML =
     roles.map(r=>renderSection(r)).join('');
@@ -113,17 +97,13 @@ function renderSection(role){
 
 function renderPlayer(p){
   return `
-  <div class="player ${selected.includes(p.id)?'selected':''} ${!p.playing?'disabled':''}"
+  <div class="player ${selected.includes(p.id)?'selected':''}"
     onclick="toggle(${p.id})">
-    ${p.name} (${p.team})
-    ${!p.playing?" - Not Playing":""}
+    ${p.name}
   </div>`;
 }
 
 function toggle(id){
-  const p=players.find(x=>x.id===id);
-  if(!p.playing){alert("Not playing");return;}
-
   if(selected.includes(id)){
     selected=selected.filter(x=>x!==id);
   }else{
@@ -141,96 +121,77 @@ function toggleSection(role){
 // ===== STEP 2 =====
 function goToCaptain(){
   if(selected.length!==11){
-    alert("Select 11 players first");
+    alert("Select 11 players");
     return;
   }
 
   document.getElementById('step1').style.display='none';
   document.getElementById('step2').style.display='block';
 
-  renderCaptainVC();
+  renderCV();
 }
 
-function renderCaptainVC(){
-  const playersList=selected.map(id=>players.find(p=>p.id===id));
+function renderCV(){
+  const teamA=selected.map(id=>players.find(p=>p.id===id)).filter(p=>p.team==="A");
+  const teamB=selected.map(id=>players.find(p=>p.id===id)).filter(p=>p.team==="B");
 
-  document.getElementById('captainList').innerHTML=
-    playersList.map(p=>`
-      <div onclick="captain=${p.id};renderCaptainVC()" 
-        class="player ${captain===p.id?'selected':''}">
-        ${p.name}
-      </div>
-    `).join('');
+  let rows="";
+  const max=Math.max(teamA.length,teamB.length);
 
-  document.getElementById('vcList').innerHTML=
-    playersList.map(p=>`
-      <div onclick="vc=${p.id};renderCaptainVC()" 
-        class="player ${vc===p.id?'selected':''}">
-        ${p.name}
-      </div>
-    `).join('');
+  for(let i=0;i<max;i++){
+    const a=teamA[i];
+    const b=teamB[i];
+
+    rows+=`
+    <div class="row">
+      <div class="col">${a?renderCVPlayer(a):""}</div>
+      <div class="col">${b?renderCVPlayer(b):""}</div>
+    </div>`;
+  }
+
+  document.getElementById('cvContainer').innerHTML=rows;
 }
 
-// ===== SAVE TEAM =====
+function renderCVPlayer(p){
+  let cls="player";
+
+  if(captain===p.id) cls+=" captain";
+  if(vc===p.id) cls+=" vc";
+
+  return `
+  <div class="${cls}" onclick="selectCV(${p.id})">
+    ${p.name}
+  </div>`;
+}
+
+function selectCV(id){
+
+  if(captain===null){
+    captain=id;
+  }
+  else if(vc===null && id!==captain){
+    vc=id;
+  }
+  else{
+    if(id===captain) captain=null;
+    if(id===vc) vc=null;
+  }
+
+  renderCV();
+}
+
+// ===== SAVE =====
 function saveTeam(){
-  if(!captain||!vc||captain===vc){
-    alert("Select different C & VC");
+  if(!captain||!vc){
+    alert("Select C & VC");
     return;
   }
 
-  const teams=JSON.parse(localStorage.getItem('teams')||"[]");
-
-  teams.push({
-    players:selected,
-    captain,
-    vc
-  });
-
-  localStorage.setItem('teams',JSON.stringify(teams));
-
   alert("Team Saved!");
-  loadTeams();
-}
-
-// ===== LOAD =====
-function loadTeams(){
-  const teams=JSON.parse(localStorage.getItem('teams')||"[]");
-
-  document.getElementById('myTeams').innerHTML=
-    teams.map(t=>`
-      <div>
-        Players: ${t.players.join(",")}<br>
-        C: ${t.captain} | VC: ${t.vc}
-      </div>
-    `).join('');
-}
-
-// ===== CONTEST =====
-let coins=100;
-
-function joinContest(){
-  if(coins<10){alert("Not enough coins");return;}
-
-  coins-=10;
-
-  const contests=JSON.parse(localStorage.getItem('contests')||"[]");
-  contests.push({time:Date.now()});
-  localStorage.setItem('contests',JSON.stringify(contests));
-
-  loadContests();
-}
-
-function loadContests(){
-  const contests=JSON.parse(localStorage.getItem('contests')||"[]");
-
-  document.getElementById('myContests').innerHTML=
-    contests.map(c=>"<div>Joined Contest</div>").join('');
 }
 
 // INIT
 render();
-loadTeams();
-loadContests();
 
 </script>
 
