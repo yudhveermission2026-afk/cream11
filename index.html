@@ -2,34 +2,41 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cream11 Phase 5</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
 <style>
-body{font-family:sans-serif;background:#0f172a;color:#fff;padding:16px}
-.player{padding:8px;border:1px solid #334155;border-radius:8px;margin:5px;cursor:pointer}
+body{background:#0f172a;color:#fff;font-family:sans-serif;padding:12px}
+.row{display:flex;gap:10px}
+.col{flex:1}
+.player{padding:8px;border:1px solid #334155;border-radius:8px;margin:4px;cursor:pointer}
 .selected{background:#22c55e;color:#000}
 .captain{border:2px solid gold}
 .vc{border:2px solid orange}
-.row{display:flex;gap:10px}
-.col{flex:1}
+.section{margin-bottom:10px}
+.header{display:flex;justify-content:space-between;font-weight:bold}
+.toggle{cursor:pointer;background:#1e293b;padding:8px;border-radius:8px}
 .btn{padding:10px;background:#22c55e;border:none;border-radius:8px;margin-top:10px}
 </style>
 </head>
 
 <body>
 
-<h2>Fantasy App Phase 5</h2>
+<div class="header">
+  <div>Team A</div>
+  <div>VS</div>
+  <div>Team B</div>
+</div>
 
 <div id="players"></div>
+
 <button class="btn" onclick="next()">Next</button>
 
 <div id="cv" style="display:none;"></div>
-<button class="btn" onclick="saveTeam()">Save Team</button>
 
+<button class="btn" onclick="saveTeam()">Save Team</button>
 <button class="btn" onclick="joinContest()">Join Contest</button>
 
 <h3>My Teams</h3>
@@ -37,35 +44,66 @@ body{font-family:sans-serif;background:#0f172a;color:#fff;padding:16px}
 
 <script>
 
-// 🔥 Firebase config (APNA DAL)
-const firebaseConfig = {
-  apiKey: "YOUR_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_ID"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+// 🔥 Firebase config (replace)
+firebase.initializeApp({
+  apiKey:"XXX",
+  authDomain:"XXX",
+  projectId:"XXX"
+});
+const db=firebase.firestore();
+const auth=firebase.auth();
 
 auth.signInAnonymously();
 
 // ===== PLAYERS =====
-const players = Array.from({length:16},(_,i)=>({
+const roles=["WK","BAT","AR","BOWL"];
+let open={WK:true,BAT:true,AR:true,BOWL:true};
+
+const players=Array.from({length:16},(_,i)=>({
   id:i+1,
-  name:"Player "+(i+1),
-  team:i<8?"A":"B"
+  name:"P"+(i+1),
+  team:i<8?"A":"B",
+  role:roles[i%4]
 }));
 
-let selected=[], captain=null, vc=null;
+let selected=[], captain=null, vc=null, lastTeamId=null;
 
 // ===== RENDER =====
 function render(){
-  document.getElementById('players').innerHTML =
-    players.map(p=>`
-      <div class="player ${selected.includes(p.id)?'selected':''}"
-      onclick="toggle(${p.id})">${p.name}</div>
-    `).join('');
+  document.getElementById('players').innerHTML=
+    roles.map(r=>renderSection(r)).join('');
+}
+
+function renderSection(role){
+  const A=players.filter(p=>p.role===role && p.team==="A");
+  const B=players.filter(p=>p.role===role && p.team==="B");
+
+  let rows="";
+  const max=Math.max(A.length,B.length);
+
+  for(let i=0;i<max;i++){
+    rows+=`
+    <div class="row">
+      <div class="col">${A[i]?renderPlayer(A[i]):""}</div>
+      <div class="col">${B[i]?renderPlayer(B[i]):""}</div>
+    </div>`;
+  }
+
+  return `
+  <div class="section">
+    <div class="toggle" onclick="open['${role}']=!open['${role}'];render()">
+      ${open[role]?'▼':'▶'} ${role}
+    </div>
+    ${open[role]?rows:""}
+  </div>`;
+}
+
+function renderPlayer(p){
+  return `
+  <div class="player ${selected.includes(p.id)?'selected':''}"
+  onclick="toggle(${p.id})">
+  ${p.name}
+  </div>`;
 }
 
 function toggle(id){
@@ -78,12 +116,13 @@ function toggle(id){
   render();
 }
 
-// ===== STEP 2 =====
+// ===== CAPTAIN =====
 function next(){
   if(selected.length!==11){alert("Select 11");return;}
+
   document.getElementById('cv').style.display='block';
 
-  document.getElementById('cv').innerHTML =
+  document.getElementById('cv').innerHTML=
     selected.map(id=>{
       const p=players.find(x=>x.id===id);
       return `
@@ -106,41 +145,38 @@ function setCV(id){
 
 // ===== SAVE TEAM =====
 async function saveTeam(){
-  const uid = auth.currentUser.uid;
+  const uid=auth.currentUser.uid;
 
-  await db.collection("teams").add({
-    uid,
-    players:selected,
-    captain,
-    vc
+  const doc=await db.collection("teams").add({
+    uid,players:selected,captain,vc
   });
 
+  lastTeamId=doc.id;
   alert("Saved!");
   loadTeams();
 }
 
-// ===== LOAD =====
-async function loadTeams(){
-  const uid = auth.currentUser.uid;
-
-  const snap = await db.collection("teams")
-    .where("uid","==",uid).get();
-
-  document.getElementById('teams').innerHTML =
-    snap.docs.map(d=>"<div>Team</div>").join('');
-}
-
-// ===== CONTEST =====
+// ===== JOIN =====
 async function joinContest(){
-  const uid = auth.currentUser.uid;
+  const uid=auth.currentUser.uid;
+
+  if(!lastTeamId){alert("Save team first");return;}
 
   await db.collection("contestEntries").add({
-    uid,
-    team:selected,
-    points:0
+    uid,teamId:lastTeamId,points:0
   });
 
   alert("Joined!");
+}
+
+// ===== LOAD =====
+async function loadTeams(){
+  const uid=auth.currentUser.uid;
+
+  const snap=await db.collection("teams").where("uid","==",uid).get();
+
+  document.getElementById('teams').innerHTML=
+    snap.docs.map(d=>"<div>Team "+d.id+"</div>").join('');
 }
 
 render();
