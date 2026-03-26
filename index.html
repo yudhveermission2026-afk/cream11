@@ -176,7 +176,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       </div>
       <div class="errmsg" id="phoneE" style="margin-top:5px;margin-bottom:10px;">Enter valid 10-digit number</div>
       <div style="height:12px;"></div>
-      <button class="btn-main" onclick="sendOTP()">SEND OTP →</button>
+      <button class="btn-main" id="sendOtpBtn" onclick="sendOTP()">SEND OTP →</button>
+      <div id="recaptcha-box" style="margin:10px 0;display:flex;justify-content:center;"></div>
       <div class="wbonus">🎉 Get ₹10,000 FREE Coins on Sign Up!</div>
     </div>
 
@@ -356,7 +357,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<div id="recaptcha-container" style="display:none;margin:10px 0;display:flex;justify-content:center;"></div>
+
 <script>
 // ===== STATE =====
 let S = {
@@ -607,33 +608,60 @@ function sendOTP(){
   else{document.getElementById('rPhone').classList.remove('err');document.getElementById('phoneE').style.display='none';}
   if(!ok) return;
   S.phone = ph;
-  // reCAPTCHA dikhao
-  document.getElementById('recaptcha-container').style.display='block';
-  if(window.recaptchaVerifier){window.recaptchaVerifier.clear();window.recaptchaVerifier=null;}
-  window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container',{
-    size:'normal',
-    callback:()=>{ doSendOTP(); },
-    'expired-callback':()=>{ window.recaptchaVerifier=null; }
+
+  // Pehle purana recaptcha clear karo
+  const box = document.getElementById('recaptcha-box');
+  box.innerHTML = '';
+
+  if(window.recaptchaVerifier){
+    try{ window.recaptchaVerifier.clear(); }catch(e){}
+    window.recaptchaVerifier = null;
+  }
+
+  // Button hide karo, recaptcha dikhao
+  document.getElementById('sendOtpBtn').style.display = 'none';
+
+  window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier(box, {
+    size: 'normal',
+    callback: () => { doSendOTP(); },
+    'expired-callback': () => {
+      box.innerHTML = '';
+      document.getElementById('sendOtpBtn').style.display = 'block';
+      window.recaptchaVerifier = null;
+    }
   });
-  window.recaptchaVerifier.render();
+  window.recaptchaVerifier.render().catch(e => {
+    console.error(e);
+    document.getElementById('sendOtpBtn').style.display = 'block';
+    box.innerHTML = '';
+  });
 }
 
 async function doSendOTP(){
   const ph = S.phone;
   const phoneNumber = '+91' + ph;
-  document.getElementById('recaptcha-container').style.display='none';
-  toast('OTP bhej raha hai...');
+  const box = document.getElementById('recaptcha-box');
+  box.innerHTML = '<div style="color:var(--green);font-size:13px;padding:8px 0;">✅ Verified! OTP bhej raha hai...</div>';
+
   try {
-    const confirmationResult = await auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier);
-    window.confirmationResult = confirmationResult;
-    document.getElementById('otpMsg').innerHTML = `OTP bheja gaya <strong>+91 ${ph.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3')}</strong> pe<br><span style="color:var(--green);font-size:12px;">✅ Real SMS aayega thodi der mein</span>`;
+    const result = await auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier);
+    window.confirmationResult = result;
+    box.innerHTML = '';
+    document.getElementById('sendOtpBtn').style.display = 'block';
+    document.getElementById('otpMsg').innerHTML = `OTP bheja gaya <strong>+91 ${ph.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3')}</strong> pe<br><span style="color:var(--green);font-size:12px;">✅ SMS aayega 30 seconds mein</span>`;
     document.getElementById('vPhone').innerText = ph;
-    goStep(2); startResend(); setTimeout(()=>document.getElementById('o1').focus(),300);
+    goStep(2);
+    startResend();
+    setTimeout(()=>document.getElementById('o1').focus(), 300);
   } catch(error) {
-    if(window.recaptchaVerifier){window.recaptchaVerifier.clear();window.recaptchaVerifier=null;}
+    box.innerHTML = '';
+    document.getElementById('sendOtpBtn').style.display = 'block';
+    try{ window.recaptchaVerifier.clear(); }catch(e){}
+    window.recaptchaVerifier = null;
     let msg = 'Error: ' + (error.code || error.message);
-    if(error.code==='auth/invalid-phone-number') msg='Phone number sahi nahi!';
-    if(error.code==='auth/too-many-requests') msg='Bahut zyada requests! Thodi der baad try karo.';
+    if(error.code === 'auth/invalid-phone-number') msg = 'Phone number sahi nahi hai!';
+    if(error.code === 'auth/too-many-requests') msg = 'Bahut requests ho gayi! 1 ghante baad try karo.';
+    if(error.code === 'auth/quota-exceeded') msg = 'SMS quota khatam! Kal try karo.';
     toast(msg, true);
   }
 }
