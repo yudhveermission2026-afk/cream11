@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cream11 Phase 3</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{font-family:sans-serif;background:#0f172a;color:#fff;margin:0}
+.btn{padding:10px 14px;background:#22c55e;border:none;border-radius:8px;color:#000;font-weight:bold;cursor:pointer}
+.container{padding:16px}
+.card{background:#1e293b;padding:12px;border-radius:12px;margin-bottom:12px}
+.row{display:flex;gap:10px}
+.col{flex:1}
+.player{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #334155;border-radius:8px;margin-bottom:6px;cursor:pointer}
+.selected{background:#22c55e;color:#000}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h2>Team Builder (Phase 3)</h2>
+
+<div class="row">
+<div class="col">
+<h4>Team A</h4>
+<div id="teamA"></div>
+</div>
+
+<div class="col">
+<h4>Team B</h4>
+<div id="teamB"></div>
+</div>
+</div>
+
+<button class="btn" onclick="saveTeam()">Save Team</button>
+
+<h3 style="margin-top:20px;">My Teams</h3>
+<div id="myTeams"></div>
+
+</div>
+
+<script>
+const playersA = ["Rohit","Gill","Kohli","Rahul","Ishan"];
+const playersB = ["Smith","Warner","Root","Buttler","Stokes"];
+
+let selected = [];
+
+function render(){
+  const a = document.getElementById('teamA');
+  const b = document.getElementById('teamB');
+  a.innerHTML = playersA.map(p=>playerHTML(p)).join('');
+  b.innerHTML = playersB.map(p=>playerHTML(p)).join('');
+}
+
+function playerHTML(p){
+  return `<div class="player ${selected.includes(p)?'selected':''}" onclick="toggle('${p}')">${p}</div>`;
+}
+
+function toggle(p){
+  if(selected.includes(p)){
+    selected = selected.filter(x=>x!==p);
+  }else{
+    if(selected.length>=11){ alert("Max 11 players"); return; }
+    selected.push(p);
+  }
+  render();
+}
+
+function saveTeam(){
+  const teams = JSON.parse(localStorage.getItem('teams')||"[]");
+  teams.push({players:selected, time:Date.now()});
+  localStorage.setItem('teams',JSON.stringify(teams));
+  selected=[];
+  render();
+  loadTeams();
+}
+
+function loadTeams(){
+  const teams = JSON.parse(localStorage.getItem('teams')||"[]");
+  document.getElementById('myTeams').innerHTML = teams.map(t=>`<div class="card">${t.players.join(', ')}</div>`).join('');
+}
+
+render();
+loadTeams();
+</script>
+
+</body>
+</html>
