@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cream11 Phase 10</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <style>
+    :root{
+      --bg:#08142d; --card:#10234c; --border:#29406f; --text:#eef4ff; --muted:#9fb3d9;
+      --green:#2ddf6f; --green-dark:#1fb657; --gold:#f6c343; --orange:#ff9a3d;
+      --red:#ff6b6b; --yellow:#ffd95b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+    .title{margin:0 0 8px;font-size:30px;font-weight:800}
+    .sub{color:var(--muted);font-size:14px;margin-bottom:12px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+    .btn{border:none;border-radius:12px;padding:12px 16px;font-size:15px;font-weight:800;cursor:pointer;background:var(--green);color:#03130a}
+    .btn.secondary{background:#324664;color:#fff}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .status{border:1px solid var(--border);background:#0f2149;border-radius:12px;padding:12px;color:#d9e6ff;margin-bottom:14px;min-height:46px}
+    .status.ok{border-color:#1d6d42;background:#103a24;color:#cfffde}
+    .status.bad{border-color:#6a2430;background:#3b131b;color:#ffd7db}
+    .status.warn{border-color:#7a6222;background:#3d3010;color:#ffefb0}
+    .helper{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#3d3010;border:1px solid #7a6222;color:#ffefb0;font-weight:700}
+    .hidden{display:none!important}
+    .header-row{display:grid;grid-template-columns:1fr 110px 1fr;gap:10px;align-items:center;margin-bottom:12px}
+    .header-box{text-align:center;border:1px solid var(--border);background:#0b1b3e;border-radius:12px;padding:10px 12px;font-weight:800}
+    .vs{text-align:center;color:var(--muted);font-weight:800}
+    .section{border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px}
+    .section-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#12295d;cursor:pointer;font-weight:800}
+    .section-body{padding:10px;background:#0b1d43}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
+    .slot-empty{min-height:58px}
+    .player{min-height:58px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#091939;cursor:pointer}
+    .player.disabled{opacity:.35;cursor:not-allowed}
+    .player.selected{background:var(--green);color:#04150a;border-color:var(--green-dark)}
+    .player.captain{border:2px solid var(--gold)}
+    .player.vc{border:2px solid var(--orange)}
+    .player-name{font-weight:800;display:block}
+    .player-meta{font-size:12px;color:var(--muted)}
+    .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+    .badge{font-size:11px;line-height:1;padding:5px 7px;border-radius:999px;font-weight:800}
+    .badge.sel{background:#083517;color:#92ffbd}
+    .badge.c{background:var(--gold);color:#2b1b00}
+    .badge.vc{background:var(--orange);color:#311500}
+    .badge.np{background:#4f1820;color:#ffb0b8}
+    .badge.lock{background:#4a1820;color:#ffd7db}
+    .step-chip{display:inline-block;margin-right:6px;margin-bottom:8px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#1f3561;color:#dbe7ff}
+    .step-chip.active{background:var(--green);color:#04150a}
+    .step-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .rules-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 14px}
+    .rule-card{padding:10px;border:1px solid var(--border);border-radius:12px;background:#0b1b3e}
+    .rule-name{font-size:12px;color:var(--muted);margin-bottom:4px}
+    .rule-count{font-size:18px;font-weight:800}
+    .ok{color:#8cffbd}.bad{color:#ffb4b4}.warn{color:var(--yellow)}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .list-item{border:1px solid var(--border);background:#091939;border-radius:12px;padding:12px;margin-bottom:10px}
+    .mini{color:var(--muted);font-size:14px}
+    input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:#0b1b3e;color:#fff;font-size:16px;margin-bottom:10px}
+    .tabs{display:flex;gap:8px;margin-bottom:14px}
+    .tab{border:none;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:800;background:#324664;color:#fff}
+    .tab.active{background:var(--green);color:#03130a}
+    .wallet{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .wallet-box{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#0b1b3e;font-weight:800}
+    @media (max-width:900px){
+      .grid-2,.rules-grid{grid-template-columns:1fr 1fr}
+      .row{grid-template-columns:1fr}
+      .header-row{grid-template-columns:1fr}
+      .vs{display:none}
+    }
+    @media (max-width:520px){.grid-2,.rules-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="authScreen" class="card">
+      <div class="title">CREAM11</div>
+      <div class="sub">Phase 10 — Firebase auth + Firestore + coins</div>
+      <div class="tabs">
+        <button id="signupTab" class="tab active" onclick="switchAuth('signup')">Sign Up</button>
+        <button id="signinTab" class="tab" onclick="switchAuth('signin')">Sign In</button>
+      </div>
+      <div id="signupBox">
+        <input id="suName" type="text" placeholder="Full name" />
+        <input id="suEmail" type="email" placeholder="Email address" />
+        <input id="suPass" type="password" placeholder="Password (min 6 chars)" />
+        <button class="btn" onclick="signup()">Create Account</button>
+      </div>
+      <div id="signinBox" class="hidden">
+        <input id="siEmail" type="email" placeholder="Email address" />
+        <input id="siPass" type="password" placeholder="Password" />
+        <button class="btn" onclick="signin()">Sign In</button>
+      </div>
+      <div id="authStatus" class="status warn">Firebase config daal, phir sign up / sign in test kar.</div>
+    </div>
+
+    <div id="appScreen" class="hidden">
+      <div class="topbar">
+        <div>
+          <h1 class="title">CREAM11</h1>
+          <div id="userLine" class="sub">Logged in</div>
+        </div>
+        <div class="wallet">
+          <div id="coinsBox" class="wallet-box">Coins: 0</div>
+          <button class="btn secondary" onclick="resetBuilder()">New Team</button>
+          <button class="btn secondary" onclick="logout()">Logout</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div>
+          <span id="chip1" class="step-chip active">1. Select Players</span>
+          <span id="chip2" class="step-chip">2. Captain / VC</span>
+          <span id="chip3" class="step-chip">3. Save / Join</span>
+        </div>
+
+        <div id="statusBox" class="status warn">Team banao. App impossible picks ko block karega.</div>
+        <div id="inlineHelper" class="helper hidden"></div>
+
+        <div class="rules-grid">
+          <div class="rule-card"><div class="rule-name">WK</div><div id="wkCount" class="rule-count">0</div></div>
+          <div class="rule-card"><div class="rule-name">BAT</div><div id="batCount" class="rule-count">0</div></div>
+          <div class="rule-card"><div class="rule-name">AR</div><div id="arCount" class="rule-count">0</div></div>
+          <div class="rule-card"><div class="rule-name">BOWL</div><div id="bowlCount" class="rule-count">0</div></div>
+          <div class="rule-card"><div class="rule-name">Team A</div><div id="teamACount" class="rule-count">0</div></div>
+          <div class="rule-card"><div class="rule-name">Team B</div><div id="teamBCount" class="rule-count">0</div></div>
+          <div class="rule-card"><div class="rule-name">Selected</div><div id="selectedCount" class="rule-count">0/11</div></div>
+          <div class="rule-card"><div class="rule-name">Combination</div><div id="comboStatus" class="rule-count warn">Incomplete</div></div>
+        </div>
+
+        <div id="stage1">
+          <div class="header-row">
+            <div class="header-box">Team A</div>
+            <div class="vs">VS</div>
+            <div class="header-box">Team B</div>
+          </div>
+          <div id="playersContainer"></div>
+          <div class="step-actions">
+            <button class="btn" onclick="goToCaptainStage()">Next</button>
+          </div>
+        </div>
+
+        <div id="stage2" class="hidden">
+          <div class="header-row">
+            <div class="header-box">Selected Team A</div>
+            <div class="vs">C / VC</div>
+            <div class="header-box">Selected Team B</div>
+          </div>
+          <div class="sub">Pehla click = Captain, doosra alag player = Vice Captain. Dubara click = remove.</div>
+          <div id="cvContainer"></div>
+          <div class="step-actions">
+            <button class="btn secondary" onclick="backToSelection()">Back</button>
+            <button class="btn" onclick="saveTeam()">Save Team</button>
+          </div>
+        </div>
+
+        <div id="stage3" class="hidden">
+          <div class="title" style="font-size:22px;">Saved Team Ready</div>
+          <div id="savedTeamPreview" class="mini">No team saved yet.</div>
+          <div class="step-actions">
+            <button class="btn secondary" onclick="backToCaptainStage()">Back</button>
+            <button class="btn" onclick="joinContest()">Join Contest (10 coins)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="title" style="font-size:22px;">My Teams</div>
+          <div id="teamsList" class="mini">No saved teams yet.</div>
+        </div>
+        <div class="card">
+          <div class="title" style="font-size:22px;">My Entries</div>
+          <div id="entriesList" class="mini">No contest entries yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "PASTE_YOUR_API_KEY",
+      authDomain: "PASTE_YOUR_AUTH_DOMAIN",
+      projectId: "PASTE_YOUR_PROJECT_ID",
+      storageBucket: "PASTE_YOUR_STORAGE_BUCKET",
+      messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID",
+      appId: "PASTE_YOUR_APP_ID"
+    };
+
+    const ROLES = ['WK','BAT','AR','BOWL'];
+    const openSections = {WK:true,BAT:true,AR:true,BOWL:true};
+    const RULES = {WK:{min:1,max:4},BAT:{min:3,max:6},AR:{min:1,max:4},BOWL:{min:3,max:6},TEAM_MAX:7,TOTAL:11};
+    const ENTRY_FEE = 10;
+
+    const players = [
+      {id:1,name:'Ishan',team:'A',role:'WK',playing:true},
+      {id:2,name:'Pant',team:'A',role:'WK',playing:true},
+      {id:3,name:'Buttler',team:'B',role:'WK',playing:true},
+      {id:4,name:'Bairstow',team:'B',role:'WK',playing:true},
+      {id:5,name:'Rohit',team:'A',role:'BAT',playing:true},
+      {id:6,name:'Gill',team:'A',role:'BAT',playing:true},
+      {id:7,name:'Surya',team:'A',role:'BAT',playing:true},
+      {id:8,name:'Warner',team:'B',role:'BAT',playing:true},
+      {id:9,name:'Smith',team:'B',role:'BAT',playing:true},
+      {id:10,name:'Root',team:'B',role:'BAT',playing:true},
+      {id:11,name:'Hardik',team:'A',role:'AR',playing:true},
+      {id:12,name:'Jadeja',team:'A',role:'AR',playing:true},
+      {id:13,name:'Stokes',team:'B',role:'AR',playing:true},
+      {id:14,name:'Maxwell',team:'B',role:'AR',playing:true},
+      {id:15,name:'Bumrah',team:'A',role:'BOWL',playing:true},
+      {id:16,name:'Shami',team:'A',role:'BOWL',playing:false},
+      {id:17,name:'Starc',team:'B',role:'BOWL',playing:true},
+      {id:18,name:'Cummins',team:'B',role:'BOWL',playing:true},
+      {id:19,name:'Siraj',team:'B',role:'BOWL',playing:true},
+      {id:20,name:'Kuldeep',team:'A',role:'BOWL',playing:true}
+    ];
+
+    let db, auth, currentUser = null;
+    let selected = [], captain = null, viceCaptain = null, currentSavedTeamId = null;
+
+    function byId(id){ return players.find(p => p.id === id); }
+    function getSelectedPlayers(){ return selected.map(byId).filter(Boolean); }
+    function roleName(role){ return role==='WK'?'Wicket Keeper':role==='BAT'?'Batsman':role==='AR'?'All Rounder':'Bowler'; }
+
+    function switchAuth(mode){
+      document.getElementById('signupTab').classList.toggle('active', mode==='signup');
+      document.getElementById('signinTab').classList.toggle('active', mode==='signin');
+      document.getElementById('signupBox').classList.toggle('hidden', mode!=='signup');
+      document.getElementById('signinBox').classList.toggle('hidden', mode!=='signin');
+    }
+
+    function authMsg(msg, type='warn'){
+      const el = document.getElementById('authStatus');
+      el.textContent = msg;
+      el.className = `status ${type}`;
+    }
+
+    function setStatus(msg, type='warn'){
+      const el = document.getElementById('statusBox');
+      el.textContent = msg;
+      el.className = `status ${type}`;
+    }
+
+    function setInlineHelper(msg=''){
+      const el = document.getElementById('inlineHelper');
+      if(msg){ el.textContent = msg; el.classList.remove('hidden'); }
+      else { el.classList.add('hidden'); el.textContent = ''; }
+    }
+
+    function updateCoinsBox(coins){
+      document.getElementById('coinsBox').textContent = `Coins: ${coins}`;
+    }
+
+    async function signup(){
+      try{
+        const name = document.getElementById('suName').value.trim();
+        const email = document.getElementById('suEmail').value.trim().toLowerCase();
+        const pass = document.getElementById('suPass').value.trim();
+        if(name.length < 3) return authMsg('Name minimum 3 letters ka daalo', 'bad');
+        if(!email.includes('@')) return authMsg('Valid email daalo', 'bad');
+        if(pass.length < 6) return authMsg('Password minimum 6 chars ka hona chahiye', 'bad');
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
+        await db.collection('users').doc(cred.user.uid).set({
+          uid: cred.user.uid,
+          name, email,
+          coins: 1000,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, {merge:true});
+        authMsg('Signup successful ✅', 'ok');
+      }catch(err){
+        authMsg(err.message || 'Signup failed', 'bad');
+      }
+    }
+
+    async function signin(){
+      try{
+        const email = document.getElementById('siEmail').value.trim().toLowerCase();
+        const pass = document.getElementById('siPass').value.trim();
+        if(!email.includes('@')) return authMsg('Valid email daalo', 'bad');
+        if(!pass) return authMsg('Password daalo', 'bad');
+        await auth.signInWithEmailAndPassword(email, pass);
+        authMsg('Signin successful ✅', 'ok');
+      }catch(err){
+        authMsg(err.message || 'Signin failed', 'bad');
+      }
+    }
+
+    async function logout(){
+      await auth.signOut();
+    }
+
+    function getCounts(list=null){
+      const sel = list || getSelectedPlayers();
+      return {
+        WK: sel.filter(p => p.role==='WK').length,
+        BAT: sel.filter(p => p.role==='BAT').length,
+        AR: sel.filter(p => p.role==='AR').length,
+        BOWL: sel.filter(p => p.role==='BOWL').length,
+        A: sel.filter(p => p.team==='A').length,
+        B: sel.filter(p => p.team==='B').length,
+        TOTAL: sel.length
+      };
+    }
+
+    function getMissingMins(counts){
+      return {
+        WK: Math.max(0, RULES.WK.min - counts.WK),
+        BAT: Math.max(0, RULES.BAT.min - counts.BAT),
+        AR: Math.max(0, RULES.AR.min - counts.AR),
+        BOWL: Math.max(0, RULES.BOWL.min - counts.BOWL)
+      };
+    }
+
+    function getForcedMessage(){
+      const counts = getCounts();
+      const remaining = RULES.TOTAL - counts.TOTAL;
+      const missing = getMissingMins(counts);
+      const totalMissing = missing.WK + missing.BAT + missing.AR + missing.BOWL;
+      if(remaining <= 0 || totalMissing <= 0) return '';
+      const msgs = [];
+      for(const role of ROLES){ if(missing[role] > 0) msgs.push(`${missing[role]} more ${role}`); }
+      return totalMissing === remaining ? `Forced picks: ${msgs.join(', ')}` : `Still needed: ${msgs.join(', ')}`;
+    }
+
+    function validateCombination(){
+      const c = getCounts();
+      const reasons = [];
+      if(c.TOTAL !== RULES.TOTAL) reasons.push(`Exactly ${RULES.TOTAL} players chahiye`);
+      if(c.WK < RULES.WK.min) reasons.push(`Please select minimum ${RULES.WK.min} WK`);
+      if(c.WK > RULES.WK.max) reasons.push(`Maximum ${RULES.WK.max} WK allowed`);
+      if(c.BAT < RULES.BAT.min) reasons.push(`Please select minimum ${RULES.BAT.min} BAT`);
+      if(c.BAT > RULES.BAT.max) reasons.push(`Maximum ${RULES.BAT.max} BAT allowed`);
+      if(c.AR < RULES.AR.min) reasons.push(`Please select minimum ${RULES.AR.min} AR`);
+      if(c.AR > RULES.AR.max) reasons.push(`Maximum ${RULES.AR.max} AR allowed`);
+      if(c.BOWL < RULES.BOWL.min) reasons.push(`Please select minimum ${RULES.BOWL.min} BOWL`);
+      if(c.BOWL > RULES.BOWL.max) reasons.push(`Maximum ${RULES.BOWL.max} BOWL allowed`);
+      if(c.A > RULES.TEAM_MAX) reasons.push(`Team A se maximum ${RULES.TEAM_MAX} players allowed`);
+      if(c.B > RULES.TEAM_MAX) reasons.push(`Team B se maximum ${RULES.TEAM_MAX} players allowed`);
+      return {valid: reasons.length===0, reasons, counts:c};
+    }
+
+    function setStep(step){
+      document.getElementById('chip1').classList.toggle('active', step===1);
+      document.getElementById('chip2').classList.toggle('active', step===2);
+      document.getElementById('chip3').classList.toggle('active', step===3);
+      document.getElementById('stage1').classList.toggle('hidden', step!==1);
+      document.getElementById('stage2').classList.toggle('hidden', step!==2);
+      document.getElementById('stage3').classList.toggle('hidden', step!==3);
+    }
+
+    function updateRuleBoard(){
+      const v = validateCombination();
+      document.getElementById('wkCount').textContent = `${v.counts.WK}`;
+      document.getElementById('batCount').textContent = `${v.counts.BAT}`;
+      document.getElementById('arCount').textContent = `${v.counts.AR}`;
+      document.getElementById('bowlCount').textContent = `${v.counts.BOWL}`;
+      document.getElementById('teamACount').textContent = `${v.counts.A}`;
+      document.getElementById('teamBCount').textContent = `${v.counts.B}`;
+      document.getElementById('selectedCount').textContent = `${v.counts.TOTAL}/${RULES.TOTAL}`;
+      const combo = document.getElementById('comboStatus');
+      if(v.valid){ combo.textContent='Valid'; combo.className='rule-count ok'; }
+      else if(v.counts.TOTAL===RULES.TOTAL){ combo.textContent='Invalid'; combo.className='rule-count bad'; }
+      else { combo.textContent='Incomplete'; combo.className='rule-count warn'; }
+    }
+
+    function isFeasibleAfterAdding(player){
+      const nextSel = [...getSelectedPlayers(), player];
+      const c = getCounts(nextSel);
+      if(c.TOTAL > RULES.TOTAL) return false;
+      if(c[player.role] > RULES[player.role].max) return false;
+      if(c.A > RULES.TEAM_MAX || c.B > RULES.TEAM_MAX) return false;
+      const remaining = RULES.TOTAL - c.TOTAL;
+      const missing = getMissingMins(c);
+      if(missing.WK + missing.BAT + missing.AR + missing.BOWL > remaining) return false;
+      return true;
+    }
+
+    function getDisableReason(player){
+      if(!player.playing) return 'Not Playing';
+      if(selected.includes(player.id)) return '';
+      const counts = getCounts();
+      if(counts.TOTAL >= RULES.TOTAL) return `Exactly ${RULES.TOTAL} players hi select ho sakte`;
+      if(player.team==='A' && counts.A >= RULES.TEAM_MAX) return `Team A se maximum ${RULES.TEAM_MAX} players allowed`;
+      if(player.team==='B' && counts.B >= RULES.TEAM_MAX) return `Team B se maximum ${RULES.TEAM_MAX} players allowed`;
+      if(counts[player.role] >= RULES[player.role].max) return `Maximum ${RULES[player.role].max} ${player.role} allowed`;
+      if(!isFeasibleAfterAdding(player)){
+        const missing = getMissingMins(counts);
+        const needed = ROLES.filter(r => missing[r] > 0).map(r => `${missing[r]} ${r}`).join(', ');
+        return needed ? `Select required roles first: ${needed}` : 'This pick makes valid team impossible';
+      }
+      return '';
+    }
+
+    function renderSelection(){
+      document.getElementById('playersContainer').innerHTML = ROLES.map(role => renderRoleSection(role)).join('');
+      updateRuleBoard();
+      const v = validateCombination();
+      const helper = getForcedMessage();
+      setInlineHelper(helper);
+      if(v.valid) setStatus('Valid combination ✅ Ab Next kar sakte ho.', 'ok');
+      else setStatus(v.reasons[0] || 'Team banao.', 'warn');
+    }
+
+    function renderRoleSection(role){
+      const teamA = players.filter(p => p.role===role && p.team==='A');
+      const teamB = players.filter(p => p.role===role && p.team==='B');
+      const maxLen = Math.max(teamA.length, teamB.length);
+      let rows = '';
+      for(let i=0;i<maxLen;i++){
+        rows += `<div class="row">
+          <div>${teamA[i] ? renderSelectionPlayer(teamA[i]) : '<div class="slot-empty"></div>'}</div>
+          <div>${teamB[i] ? renderSelectionPlayer(teamB[i]) : '<div class="slot-empty"></div>'}</div>
+        </div>`;
+      }
+      return `<div class="section">
+        <div class="section-head" onclick="toggleSection('${role}')">
+          <span>${openSections[role] ? '▼' : '▶'} ${roleName(role)}</span>
+          <span>${countSelectedByRole(role)} selected</span>
+        </div>
+        ${openSections[role] ? `<div class="section-body">${rows}</div>` : ''}
+      </div>`;
+    }
+
+    function countSelectedByRole(role){ return getSelectedPlayers().filter(p => p.role===role).length; }
+
+    function renderSelectionPlayer(p){
+      const isSelected = selected.includes(p.id);
+      const disableReason = getDisableReason(p);
+      const isDisabled = !isSelected && disableReason !== '';
+      return `<div class="player ${isSelected?'selected':''} ${isDisabled?'disabled':''}" onclick="togglePlayer(${p.id})">
+        <div><span class="player-name">${p.name}</span><span class="player-meta">Team ${p.team}</span></div>
+        <div class="badges">
+          ${isSelected ? '<span class="badge sel">Selected</span>' : ''}
+          ${!p.playing ? '<span class="badge np">Not Playing</span>' : ''}
+          ${isDisabled && p.playing ? '<span class="badge lock">Locked</span>' : ''}
+        </div>
+      </div>`;
+    }
+
+    function toggleSection(role){ openSections[role] = !openSections[role]; renderSelection(); }
+
+    function togglePlayer(id){
+      const player = byId(id);
+      if(!player) return;
+      if(selected.includes(id)){
+        selected = selected.filter(x => x !== id);
+        if(captain===id) captain = null;
+        if(viceCaptain===id) viceCaptain = null;
+        renderSelection();
+        return;
+      }
+      const reason = getDisableReason(player);
+      if(reason){
+        setStatus(reason, 'bad');
+        setInlineHelper(reason.includes('Select required roles first') ? reason : getForcedMessage());
+        return;
+      }
+      selected.push(id);
+      renderSelection();
+    }
+
+    function goToCaptainStage(){
+      const v = validateCombination();
+      if(!v.valid){ setStatus(v.reasons[0], 'bad'); return; }
+      setStep(2);
+      renderCV();
+      setInlineHelper('');
+      setStatus('Ab Captain aur Vice Captain choose karo.', 'warn');
+    }
+
+    function backToSelection(){ setStep(1); renderSelection(); }
+    function backToCaptainStage(){ setStep(2); renderCV(); setStatus('Captain / VC edit kar sakte ho.', 'warn'); }
+
+    function renderCV(){
+      const selectedPlayers = getSelectedPlayers();
+      const teamA = selectedPlayers.filter(p => p.team==='A');
+      const teamB = selectedPlayers.filter(p => p.team==='B');
+      const maxLen = Math.max(teamA.length, teamB.length);
+      let rows = '';
+      for(let i=0;i<maxLen;i++){
+        rows += `<div class="row">
+          <div>${teamA[i] ? renderCVPlayer(teamA[i]) : '<div class="slot-empty"></div>'}</div>
+          <div>${teamB[i] ? renderCVPlayer(teamB[i]) : '<div class="slot-empty"></div>'}</div>
+        </div>`;
+      }
+      document.getElementById('cvContainer').innerHTML = rows;
+    }
+
+    function renderCVPlayer(p){
+      return `<div class="player ${captain===p.id?'captain':''} ${viceCaptain===p.id?'vc':''}" onclick="selectCV(${p.id})">
+        <div><span class="player-name">${p.name}</span><span class="player-meta">Team ${p.team}</span></div>
+        <div class="badges">
+          ${captain===p.id ? '<span class="badge c">C</span>' : ''}
+          ${viceCaptain===p.id ? '<span class="badge vc">VC</span>' : ''}
+        </div>
+      </div>`;
+    }
+
+    function selectCV(id){
+      if(!selected.includes(id)){ setStatus('Ye player selected 11 me nahi hai.', 'bad'); return; }
+      if(captain===id){ captain=null; renderCV(); setStatus('Captain remove ho gaya.', 'warn'); return; }
+      if(viceCaptain===id){ viceCaptain=null; renderCV(); setStatus('Vice Captain remove ho gaya.', 'warn'); return; }
+      if(captain===null){ captain=id; renderCV(); setStatus('Captain select ho gaya. Ab doosra alag player Vice Captain banao.', 'warn'); return; }
+      if(viceCaptain===null && id!==captain){ viceCaptain=id; renderCV(); setStatus('Captain aur Vice Captain dono select ho gaye. Ab Save Team karo.', 'ok'); return; }
+      setStatus('Captain aur VC already selected hain. Kisi ek ko dubara click karke remove karo.', 'bad');
+    }
+
+    async function saveTeam(){
+      const v = validateCombination();
+      if(!v.valid){ setStatus(v.reasons[0], 'bad'); return; }
+      if(!captain){ setStatus('Please select Captain first', 'bad'); return; }
+      if(!viceCaptain){ setStatus('Please select Vice Captain', 'bad'); return; }
+      if(captain===viceCaptain){ setStatus('Captain aur Vice Captain same nahi ho sakte.', 'bad'); return; }
+      if(!currentUser){ setStatus('Login required.', 'bad'); return; }
+
+      const ref = await db.collection('teams').add({
+        uid: currentUser.uid,
+        players: [...selected],
+        captain,
+        viceCaptain,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      currentSavedTeamId = ref.id;
+      renderSavedPreview({id: ref.id, players:[...selected], captain, viceCaptain});
+      await loadTeams();
+      setStep(3);
+      setStatus('Team saved successfully ✅ Ab Join Contest kar sakte ho.', 'ok');
+    }
+
+    function renderSavedPreview(team){
+      const playerNames = team.players.map(id => byId(id)?.name || id).join(', ');
+      const capName = byId(team.captain)?.name || team.captain;
+      const vcName = byId(team.viceCaptain)?.name || team.viceCaptain;
+      document.getElementById('savedTeamPreview').innerHTML = `<div class="list-item">
+        <div><strong>Team ID:</strong> ${team.id}</div>
+        <div><strong>Players:</strong> ${playerNames}</div>
+        <div><strong>C:</strong> ${capName} &nbsp; <strong>VC:</strong> ${vcName}</div>
+      </div>`;
+    }
+
+    async function joinContest(){
+      if(!currentSavedTeamId){ setStatus('Pehle valid team save karo.', 'bad'); return; }
+      if(!currentUser){ setStatus('Login required.', 'bad'); return; }
+
+      const userRef = db.collection('users').doc(currentUser.uid);
+      const userSnap = await userRef.get();
+      const userData = userSnap.data() || {};
+      const coins = userData.coins ?? 0;
+      if(coins < ENTRY_FEE){ setStatus(`Not enough coins. ${ENTRY_FEE} coins chahiye.`, 'bad'); return; }
+
+      const dupSnap = await db.collection('contestEntries')
+        .where('uid', '==', currentUser.uid)
+        .where('teamId', '==', currentSavedTeamId)
+        .get();
+      if(!dupSnap.empty){ setStatus('Ye team already contest join kar chuki hai.', 'bad'); return; }
+
+      await db.collection('contestEntries').add({
+        uid: currentUser.uid,
+        teamId: currentSavedTeamId,
+        points: 0,
+        entryFee: ENTRY_FEE,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await userRef.update({ coins: coins - ENTRY_FEE });
+      updateCoinsBox(coins - ENTRY_FEE);
+      await loadEntries();
+      setStatus('Contest joined successfully ✅ Coins deduct ho gaye.', 'ok');
+    }
+
+    async function loadTeams(){
+      if(!currentUser) return;
+      const snap = await db.collection('teams').where('uid','==',currentUser.uid).get();
+      document.getElementById('teamsList').innerHTML = snap.empty ? 'No saved teams yet.' : snap.docs.map(doc => {
+        const d = doc.data();
+        const names = (d.players || []).map(id => byId(id)?.name || id).join(', ');
+        const capName = byId(d.captain)?.name || d.captain;
+        const vcName = byId(d.viceCaptain)?.name || d.viceCaptain;
+        return `<div class="list-item"><div><strong>${doc.id}</strong></div><div class="mini">${names}</div><div><strong>C:</strong> ${capName} &nbsp; <strong>VC:</strong> ${vcName}</div></div>`;
+      }).join('');
+    }
+
+    async function loadEntries(){
+      if(!currentUser) return;
+      const snap = await db.collection('contestEntries').where('uid','==',currentUser.uid).get();
+      document.getElementById('entriesList').innerHTML = snap.empty ? 'No contest entries yet.' : snap.docs.map(doc => {
+        const d = doc.data();
+        return `<div class="list-item"><div><strong>${doc.id}</strong></div><div><strong>Team:</strong> ${d.teamId}</div><div><strong>Points:</strong> ${d.points || 0}</div><div><strong>Fee:</strong> ${d.entryFee || 0}</div></div>`;
+      }).join('');
+    }
+
+    async function ensureUserDoc(user){
+      const ref = db.collection('users').doc(user.uid);
+      const snap = await ref.get();
+      if(!snap.exists){
+        await ref.set({
+          uid: user.uid,
+          name: user.displayName || user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+          coins: 1000,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      const data = (await ref.get()).data() || {};
+      updateCoinsBox(data.coins ?? 0);
+      document.getElementById('userLine').textContent = `${data.name || 'User'} • ${data.email || ''}`;
+    }
+
+    function resetBuilder(){
+      selected = []; captain = null; viceCaptain = null; currentSavedTeamId = null;
+      setStep(1); renderSelection(); document.getElementById('savedTeamPreview').innerHTML = 'No team saved yet.';
+      setStatus('Builder reset ho gaya.', 'warn');
+    }
+
+    async function initFirebase(){
+      try{
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        auth = firebase.auth();
+        auth.onAuthStateChanged(async (user) => {
+          currentUser = user;
+          if(user){
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.remove('hidden');
+            await ensureUserDoc(user);
+            await loadTeams();
+            await loadEntries();
+            renderSelection();
+          }else{
+            document.getElementById('authScreen').classList.remove('hidden');
+            document.getElementById('appScreen').classList.add('hidden');
+          }
+        });
+      }catch(err){
+        authMsg('Firebase init error. Config sahi daalo.', 'bad');
+      }
+    }
+
+    initFirebase();
+  </script>
+</body>
+</html>
