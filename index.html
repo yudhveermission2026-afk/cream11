@@ -641,11 +641,15 @@ async function doSendOTP(){
   const ph = S.phone;
   const phoneNumber = '+91' + ph;
   const box = document.getElementById('recaptcha-box');
-  box.innerHTML = '<div style="color:var(--green);font-size:13px;padding:8px 0;">✅ Verified! OTP bhej raha hai...</div>';
+
+  // ✅ FIX: box.innerHTML pehle mat clear karo — Firebase ka reCAPTCHA widget isi element mein
+  // attached hota hai. Agar pehle clear kiya toh Firebase kehta hai "element removed" aur crash ho jaata hai.
+  // Isliye pehle signInWithPhoneNumber complete karo, BAAD mein box clear karo.
 
   try {
     const result = await auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier);
     window.confirmationResult = result;
+    // ✅ Ab safe hai clear karna — OTP request complete ho gayi
     box.innerHTML = '';
     document.getElementById('sendOtpBtn').style.display = 'block';
     document.getElementById('otpMsg').innerHTML = `OTP bheja gaya <strong>+91 ${ph.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3')}</strong> pe<br><span style="color:var(--green);font-size:12px;">✅ SMS aayega 30 seconds mein</span>`;
