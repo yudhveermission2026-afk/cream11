@@ -2,105 +2,70 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cream11 Phase 4 Updated</title>
+<title>Cream11 Phase 5</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
 <style>
-body{font-family:sans-serif;background:#0f172a;color:#fff;margin:0;padding:16px}
-.btn{padding:10px;background:#22c55e;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:10px}
+body{font-family:sans-serif;background:#0f172a;color:#fff;padding:16px}
 .player{padding:8px;border:1px solid #334155;border-radius:8px;margin:5px;cursor:pointer}
 .selected{background:#22c55e;color:#000}
 .captain{border:2px solid gold}
 .vc{border:2px solid orange}
-.disabled{opacity:0.4;pointer-events:none}
 .row{display:flex;gap:10px}
 .col{flex:1}
+.btn{padding:10px;background:#22c55e;border:none;border-radius:8px;margin-top:10px}
 </style>
 </head>
 
 <body>
 
-<h2>Team Builder</h2>
+<h2>Fantasy App Phase 5</h2>
 
-<div id="step1">
-<div id="playersContainer"></div>
-<button class="btn" onclick="goToCaptain()">Next</button>
-</div>
+<div id="players"></div>
+<button class="btn" onclick="next()">Next</button>
 
-<div id="step2" style="display:none;">
-<h3>Select Captain & Vice Captain</h3>
-<div id="cvContainer"></div>
+<div id="cv" style="display:none;"></div>
 <button class="btn" onclick="saveTeam()">Save Team</button>
-</div>
+
+<button class="btn" onclick="joinContest()">Join Contest</button>
+
+<h3>My Teams</h3>
+<div id="teams"></div>
 
 <script>
 
-// ===== PLAYERS (FULL) =====
-const players=[
-{id:1,name:"Rohit",team:"A",role:"BAT",playing:true},
-{id:2,name:"Gill",team:"A",role:"BAT",playing:true},
-{id:3,name:"Ishan",team:"A",role:"WK",playing:true},
-{id:4,name:"Hardik",team:"A",role:"AR",playing:true},
-{id:5,name:"Bumrah",team:"A",role:"BOWL",playing:true},
-{id:6,name:"Surya",team:"A",role:"BAT",playing:true},
-{id:7,name:"Pant",team:"A",role:"WK",playing:true},
-{id:8,name:"Jadeja",team:"A",role:"AR",playing:true},
+// 🔥 Firebase config (APNA DAL)
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_ID"
+};
 
-{id:9,name:"Warner",team:"B",role:"BAT",playing:true},
-{id:10,name:"Smith",team:"B",role:"BAT",playing:true},
-{id:11,name:"Buttler",team:"B",role:"WK",playing:true},
-{id:12,name:"Stokes",team:"B",role:"AR",playing:true},
-{id:13,name:"Starc",team:"B",role:"BOWL",playing:true},
-{id:14,name:"Maxwell",team:"B",role:"AR",playing:true},
-{id:15,name:"Bairstow",team:"B",role:"WK",playing:true},
-{id:16,name:"Cummins",team:"B",role:"BOWL",playing:true}
-];
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-const roles=["WK","BAT","AR","BOWL"];
-let openSections={WK:true,BAT:true,AR:true,BOWL:true};
+auth.signInAnonymously();
 
-let selected=[];
-let captain=null;
-let vc=null;
+// ===== PLAYERS =====
+const players = Array.from({length:16},(_,i)=>({
+  id:i+1,
+  name:"Player "+(i+1),
+  team:i<8?"A":"B"
+}));
 
-// ===== STEP 1 =====
+let selected=[], captain=null, vc=null;
+
+// ===== RENDER =====
 function render(){
-  document.getElementById('playersContainer').innerHTML =
-    roles.map(r=>renderSection(r)).join('');
-}
-
-function renderSection(role){
-  const teamA=players.filter(p=>p.role===role&&p.team==="A");
-  const teamB=players.filter(p=>p.role===role&&p.team==="B");
-
-  let rows="";
-  const max=Math.max(teamA.length,teamB.length);
-
-  for(let i=0;i<max;i++){
-    const a=teamA[i];
-    const b=teamB[i];
-
-    rows+=`
-    <div class="row">
-      <div class="col">${a?renderPlayer(a):""}</div>
-      <div class="col">${b?renderPlayer(b):""}</div>
-    </div>`;
-  }
-
-  return `
-  <div>
-    <div onclick="toggleSection('${role}')" style="cursor:pointer;">
-      ${openSections[role]?'▼':'▶'} ${role}
-    </div>
-    ${openSections[role]?rows:""}
-  </div>`;
-}
-
-function renderPlayer(p){
-  return `
-  <div class="player ${selected.includes(p.id)?'selected':''}"
-    onclick="toggle(${p.id})">
-    ${p.name}
-  </div>`;
+  document.getElementById('players').innerHTML =
+    players.map(p=>`
+      <div class="player ${selected.includes(p.id)?'selected':''}"
+      onclick="toggle(${p.id})">${p.name}</div>
+    `).join('');
 }
 
 function toggle(id){
@@ -113,85 +78,73 @@ function toggle(id){
   render();
 }
 
-function toggleSection(role){
-  openSections[role]=!openSections[role];
-  render();
-}
-
 // ===== STEP 2 =====
-function goToCaptain(){
-  if(selected.length!==11){
-    alert("Select 11 players");
-    return;
-  }
+function next(){
+  if(selected.length!==11){alert("Select 11");return;}
+  document.getElementById('cv').style.display='block';
 
-  document.getElementById('step1').style.display='none';
-  document.getElementById('step2').style.display='block';
-
-  renderCV();
+  document.getElementById('cv').innerHTML =
+    selected.map(id=>{
+      const p=players.find(x=>x.id===id);
+      return `
+      <div class="player ${captain===id?'captain':''} ${vc===id?'vc':''}"
+      onclick="setCV(${id})">
+        ${p.name} ${captain===id?'C':''} ${vc===id?'VC':''}
+      </div>`;
+    }).join('');
 }
 
-function renderCV(){
-  const teamA=selected.map(id=>players.find(p=>p.id===id)).filter(p=>p.team==="A");
-  const teamB=selected.map(id=>players.find(p=>p.id===id)).filter(p=>p.team==="B");
-
-  let rows="";
-  const max=Math.max(teamA.length,teamB.length);
-
-  for(let i=0;i<max;i++){
-    const a=teamA[i];
-    const b=teamB[i];
-
-    rows+=`
-    <div class="row">
-      <div class="col">${a?renderCVPlayer(a):""}</div>
-      <div class="col">${b?renderCVPlayer(b):""}</div>
-    </div>`;
-  }
-
-  document.getElementById('cvContainer').innerHTML=rows;
-}
-
-function renderCVPlayer(p){
-  let cls="player";
-
-  if(captain===p.id) cls+=" captain";
-  if(vc===p.id) cls+=" vc";
-
-  return `
-  <div class="${cls}" onclick="selectCV(${p.id})">
-    ${p.name}
-  </div>`;
-}
-
-function selectCV(id){
-
-  if(captain===null){
-    captain=id;
-  }
-  else if(vc===null && id!==captain){
-    vc=id;
-  }
+function setCV(id){
+  if(!captain) captain=id;
+  else if(!vc && id!==captain) vc=id;
   else{
     if(id===captain) captain=null;
     if(id===vc) vc=null;
   }
-
-  renderCV();
+  next();
 }
 
-// ===== SAVE =====
-function saveTeam(){
-  if(!captain||!vc){
-    alert("Select C & VC");
-    return;
-  }
+// ===== SAVE TEAM =====
+async function saveTeam(){
+  const uid = auth.currentUser.uid;
 
-  alert("Team Saved!");
+  await db.collection("teams").add({
+    uid,
+    players:selected,
+    captain,
+    vc
+  });
+
+  alert("Saved!");
+  loadTeams();
 }
 
-// INIT
+// ===== LOAD =====
+async function loadTeams(){
+  const uid = auth.currentUser.uid;
+
+  const snap = await db.collection("teams")
+    .where("uid","==",uid).get();
+
+  document.getElementById('teams').innerHTML =
+    snap.docs.map(d=>"<div>Team</div>").join('');
+}
+
+// ===== CONTEST =====
+async function joinContest(){
+  const uid = auth.currentUser.uid;
+
+  await db.collection("contestEntries").add({
+    uid,
+    team:selected,
+    points:0
+  });
+
+  alert("Joined!");
+}
+
 render();
+loadTeams();
 
 </script>
 
