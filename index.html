@@ -170,21 +170,17 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <h2>🏏 Create Account</h2>
       <input class="inp" id="rName" type="text" placeholder="Full Name" maxlength="30"/>
       <div class="errmsg" id="nameE">Name must be at least 3 characters</div>
-      <div class="phone-row">
-        <div class="cc">🇮🇳 +91</div>
-        <input class="phone-inp" id="rPhone" type="tel" placeholder="10-digit mobile" maxlength="10"/>
-      </div>
-      <div class="errmsg" id="phoneE" style="margin-top:5px;margin-bottom:10px;">Enter valid 10-digit number</div>
+      <input class="inp" id="rEmail" type="email" placeholder="Email address"/>
+      <div class="errmsg" id="emailE">Valid email enter karo</div>
       <div style="height:12px;"></div>
       <button class="btn-main" id="sendOtpBtn" onclick="sendOTP()">SEND OTP →</button>
-      <div id="recaptcha-box" style="margin:10px 0;display:flex;justify-content:center;"></div>
       <div class="wbonus">🎉 Get ₹10,000 FREE Coins on Sign Up!</div>
     </div>
 
     <!-- STEP 2 -->
     <div class="lstep" id="s2">
       <h2>🔐 Verify OTP</h2>
-      <div class="otp-info" id="otpMsg">OTP sent to your number</div>
+      <div class="otp-info" id="otpMsg">OTP sent to your email</div>
       <div class="otp-row">
         <input class="oi" id="o1" maxlength="1" type="tel" oninput="on(this,'o2')" />
         <input class="oi" id="o2" maxlength="1" type="tel" oninput="on(this,'o3')" onkeydown="ob(event,this,'o1')" />
@@ -196,13 +192,13 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
       <div class="errmsg" id="otpE">Incorrect OTP. Try again.</div>
       <button class="btn-main" onclick="verifyOTP()">VERIFY OTP ✓</button>
       <div class="resend">Didn't receive? <span onclick="resendOTP()" id="rBtn">Resend OTP</span> <span id="rTimer"></span></div>
-      <div class="backlink" onclick="goStep(1)">← Change number</div>
+      <div class="backlink" onclick="goStep(1)">← Change email</div>
     </div>
 
     <!-- STEP 3 -->
     <div class="lstep" id="s3">
       <h2>🎮 Setup Profile</h2>
-      <div class="vbadge">✅ +91 <span id="vPhone"></span> Verified</div>
+      <div class="vbadge">✅ <span id="vEmail"></span> Verified</div>
       <input class="inp" id="uname" type="text" placeholder="Choose username (min 4 chars)" maxlength="20"/>
       <div class="errmsg" id="unameE">Username must be 4-20 characters</div>
       <select class="inp" id="favTeam" style="cursor:pointer;">
@@ -353,15 +349,16 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
   </div>
 </div>
 
-<!-- Firebase SDKs — Real OTP + Database -->
+<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <script>
 // ===== STATE =====
 let S = {
-  coins:0, username:'', phone:'', matchesPlayed:0, wins:0,
+  coins:0, username:'', phone:'', email:'', matchesPlayed:0, wins:0,
   teams:[], txns:[], joined:[],
   curMatch:null, selPlayers:[], credUsed:0,
   curJoin:null, selTeam:null,
@@ -573,14 +570,15 @@ auth.onAuthStateChanged(async (user) => {
     if (doc.exists) {
       const data = doc.data();
       S.username = data.username;
-      S.phone = data.phone;
+      S.phone = data.phone || '';
+      S.email = data.email || '';
       S.coins = data.coins;
       S.uid = user.uid;
       S.txns = data.transactions || [{t:'c',d:'🎁 Welcome Bonus',a:10000,time:'Account banate waqt'}];
       S.matchesPlayed = data.matchesPlayed || 0;
       S.wins = data.wins || 0;
       document.getElementById('pName').innerText = S.username;
-      document.getElementById('pPhone').innerText = '📱 +91 ' + S.phone;
+      document.getElementById('pPhone').innerText = S.email ? '📧 ' + S.email : '📱 +91 ' + S.phone;
       document.getElementById('splash').classList.remove('active');
       document.getElementById('app').classList.add('active');
       updCoins(); renderAll();
@@ -589,8 +587,9 @@ auth.onAuthStateChanged(async (user) => {
   }
 });
 
-// ===== OTP =====
+// ===== EMAIL OTP =====
 let resendIv = null;
+let emailOtpCode = null;
 
 function goStep(n){
   document.querySelectorAll('.lstep').forEach(s=>s.classList.remove('active'));
@@ -600,73 +599,79 @@ function goStep(n){
 
 function sendOTP(){
   const nm = document.getElementById('rName').value.trim();
-  const ph = document.getElementById('rPhone').value.trim();
+  const em = document.getElementById('rEmail').value.trim();
   let ok = true;
   if(nm.length<3){document.getElementById('rName').classList.add('err');document.getElementById('nameE').style.display='block';ok=false;}
   else{document.getElementById('rName').classList.remove('err');document.getElementById('nameE').style.display='none';}
-  if(!/^\d{10}$/.test(ph)){document.getElementById('rPhone').classList.add('err');document.getElementById('phoneE').style.display='block';ok=false;}
-  else{document.getElementById('rPhone').classList.remove('err');document.getElementById('phoneE').style.display='none';}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){document.getElementById('rEmail').classList.add('err');document.getElementById('emailE').style.display='block';ok=false;}
+  else{document.getElementById('rEmail').classList.remove('err');document.getElementById('emailE').style.display='none';}
   if(!ok) return;
-  S.phone = ph;
-
-  // Pehle purana recaptcha clear karo
-  const box = document.getElementById('recaptcha-box');
-  box.innerHTML = '';
-
-  if(window.recaptchaVerifier){
-    try{ window.recaptchaVerifier.clear(); }catch(e){}
-    window.recaptchaVerifier = null;
-  }
-
-  // Button hide karo, recaptcha dikhao
-  document.getElementById('sendOtpBtn').style.display = 'none';
-
-  window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier(box, {
-    size: 'normal',
-    callback: () => { doSendOTP(); },
-    'expired-callback': () => {
-      box.innerHTML = '';
-      document.getElementById('sendOtpBtn').style.display = 'block';
-      window.recaptchaVerifier = null;
-    }
-  });
-  window.recaptchaVerifier.render().catch(e => {
-    console.error(e);
-    document.getElementById('sendOtpBtn').style.display = 'block';
-    box.innerHTML = '';
-  });
+  S.email = em;
+  doSendOTP();
 }
 
 async function doSendOTP(){
-  const ph = S.phone;
-  const phoneNumber = '+91' + ph;
-  const box = document.getElementById('recaptcha-box');
+  const em = S.email;
+  const btn = document.getElementById('sendOtpBtn');
+  btn.disabled = true;
+  btn.innerText = 'Bhej raha hai...';
 
-  // ✅ FIX: box.innerHTML pehle mat clear karo — Firebase ka reCAPTCHA widget isi element mein
-  // attached hota hai. Agar pehle clear kiya toh Firebase kehta hai "element removed" aur crash ho jaata hai.
-  // Isliye pehle signInWithPhoneNumber complete karo, BAAD mein box clear karo.
+  // 6-digit random OTP generate karo
+  emailOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
-    const result = await auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier);
-    window.confirmationResult = result;
-    // ✅ Ab safe hai clear karna — OTP request complete ho gayi
-    box.innerHTML = '';
-    document.getElementById('sendOtpBtn').style.display = 'block';
-    document.getElementById('otpMsg').innerHTML = `OTP bheja gaya <strong>+91 ${ph.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3')}</strong> pe<br><span style="color:var(--green);font-size:12px;">✅ SMS aayega 30 seconds mein</span>`;
-    document.getElementById('vPhone').innerText = ph;
+    // Firebase Email/Password se temporary account banao — OTP email bhejne ke liye
+    // Hum custom OTP system use karenge: Firebase anonymous auth + Firestore mein OTP store
+    await auth.signInAnonymously();
+    const user = auth.currentUser;
+
+    // OTP Firestore mein save karo (5 min expiry)
+    await db.collection('otps').doc(em).set({
+      code: emailOtpCode,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000)
+    });
+
+    btn.disabled = false;
+    btn.innerText = 'SEND OTP →';
+    document.getElementById('otpMsg').innerHTML = `OTP bheja gaya <strong>${em}</strong> pe<br><span style="color:var(--green);font-size:12px;">✅ Email check karo (spam bhi dekho)</span>`;
+    document.getElementById('vEmail').innerText = em;
     goStep(2);
     startResend();
     setTimeout(()=>document.getElementById('o1').focus(), 300);
+
+    // EmailJS se actual email bhejo
+    await sendEmailOTP(em, emailOtpCode);
+
   } catch(error) {
-    box.innerHTML = '';
-    document.getElementById('sendOtpBtn').style.display = 'block';
-    try{ window.recaptchaVerifier.clear(); }catch(e){}
-    window.recaptchaVerifier = null;
-    let msg = 'Error: ' + (error.code || error.message);
-    if(error.code === 'auth/invalid-phone-number') msg = 'Phone number sahi nahi hai!';
-    if(error.code === 'auth/too-many-requests') msg = 'Bahut requests ho gayi! 1 ghante baad try karo.';
-    if(error.code === 'auth/quota-exceeded') msg = 'SMS quota khatam! Kal try karo.';
-    toast(msg, true);
+    btn.disabled = false;
+    btn.innerText = 'SEND OTP →';
+    toast('Error: ' + (error.message || error.code), true);
+  }
+}
+
+async function sendEmailOTP(email, code) {
+  const serviceId = 'service_xbyxw6k';
+  const templateId = 'template_3cwtu1e';
+  const publicKey = '9aISo3UJcb7nSYv-0';
+
+  try {
+    await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        service_id: serviceId,
+        template_id: templateId,
+        user_id: publicKey,
+        template_params: {
+          to_email: email,
+          passcode: code,
+          time: new Date(Date.now() + 5*60000).toLocaleTimeString('en-IN')
+        }
+      })
+    });
+  } catch(e) {
+    console.log('Email send failed:', e);
   }
 }
 
@@ -682,40 +687,52 @@ async function verifyOTP(){
   btn.innerText = 'Verify ho raha hai...';
 
   try {
-    // Firebase se real OTP verify karo
-    const result = await window.confirmationResult.confirm(ent);
-    const user = result.user;
-    S.uid = user.uid;
+    // Firestore se OTP check karo
+    const otpDoc = await db.collection('otps').doc(S.email).get();
+    if(!otpDoc.exists){
+      throw new Error('OTP expired ya galat hai');
+    }
+    const data = otpDoc.data();
+    if(data.code !== ent){
+      throw new Error('wrong-otp');
+    }
+    if(new Date() > data.expiresAt.toDate()){
+      throw new Error('OTP expire ho gaya, dobara bhejo');
+    }
+
+    // OTP sahi hai — delete karo
+    await db.collection('otps').doc(S.email).delete();
 
     // Check karo pehle se account hai ya nahi
-    const doc = await db.collection('users').doc(user.uid).get();
-    if(doc.exists) {
-      // Purana user — seedha app mein le jao
-      const data = doc.data();
-      S.username = data.username;
-      S.coins = data.coins;
-      S.txns = data.transactions || [];
-      S.matchesPlayed = data.matchesPlayed || 0;
+    const userDocs = await db.collection('users').where('email', '==', S.email).limit(1).get();
+    if(!userDocs.empty) {
+      const userData = userDocs.docs[0].data();
+      S.uid = userDocs.docs[0].id;
+      S.username = userData.username;
+      S.coins = userData.coins;
+      S.txns = userData.transactions || [];
+      S.matchesPlayed = userData.matchesPlayed || 0;
       clearInterval(resendIv);
       document.getElementById('pName').innerText = S.username;
-      document.getElementById('pPhone').innerText = '📱 +91 ' + S.phone;
+      document.getElementById('pPhone').innerText = '📧 ' + S.email;
       document.getElementById('splash').classList.remove('active');
       document.getElementById('app').classList.add('active');
       updCoins(); renderAll();
       toast('🎉 Wapas aaye ' + S.username + '!');
     } else {
-      // Naya user — profile setup pe bhejo
+      S.uid = auth.currentUser ? auth.currentUser.uid : ('u_' + Date.now());
       const nm = document.getElementById('rName').value.trim();
       document.getElementById('uname').value = nm.replace(/\s+/g,'').toLowerCase() + Math.floor(10+Math.random()*90);
       clearInterval(resendIv);
       goStep(3);
-      toast('✅ Phone verify ho gaya!');
+      toast('✅ Email verify ho gaya!');
     }
 
   } catch(error) {
     btn.disabled = false;
     btn.innerText = 'VERIFY OTP ✓';
     document.getElementById('otpE').style.display = 'block';
+    document.getElementById('otpE').innerText = error.message === 'wrong-otp' ? 'Galat OTP! Dobara try karo.' : (error.message || 'Error aaya');
     ['o1','o2','o3','o4','o5','o6'].forEach(id=>{
       const e=document.getElementById(id); e.classList.add('err'); e.value='';
     });
@@ -727,7 +744,6 @@ async function verifyOTP(){
 function resendOTP(){
   ['o1','o2','o3','o4','o5','o6'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('otpE').style.display='none';
-  if(window.recaptchaVerifier){window.recaptchaVerifier.clear();window.recaptchaVerifier=null;}
   sendOTP();
 }
 
@@ -763,7 +779,7 @@ async function completeSignup(){
     // Firestore database mein user save karo
     await db.collection('users').doc(S.uid).set({
       username: u,
-      phone: S.phone,
+      email: S.email,
       coins: 10000,
       matchesPlayed: 0,
       wins: 0,
@@ -776,7 +792,7 @@ async function completeSignup(){
     document.getElementById('splash').classList.remove('active');
     document.getElementById('app').classList.add('active');
     document.getElementById('pName').innerText = u;
-    document.getElementById('pPhone').innerText = '📱 +91 ' + S.phone;
+    document.getElementById('pPhone').innerText = '📧 ' + S.email;
     updCoins(); renderAll();
     toast('🎉 Welcome ' + u + '! ₹10,000 Coins add ho gaye!');
 
