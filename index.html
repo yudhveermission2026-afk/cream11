@@ -8,7 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
 <style>
-body{background:#0f172a;color:#fff;font-family:sans-serif;padding:12px}
+body{background:#0f172a;color:#fff;font-family:sans-serif;padding:10px}
 .row{display:flex;gap:10px}
 .col{flex:1}
 .player{padding:8px;border:1px solid #334155;border-radius:8px;margin:4px;cursor:pointer}
@@ -16,7 +16,6 @@ body{background:#0f172a;color:#fff;font-family:sans-serif;padding:12px}
 .captain{border:2px solid gold}
 .vc{border:2px solid orange}
 .section{margin-bottom:10px}
-.header{display:flex;justify-content:space-between;font-weight:bold}
 .toggle{cursor:pointer;background:#1e293b;padding:8px;border-radius:8px}
 .btn{padding:10px;background:#22c55e;border:none;border-radius:8px;margin-top:10px}
 </style>
@@ -24,11 +23,7 @@ body{background:#0f172a;color:#fff;font-family:sans-serif;padding:12px}
 
 <body>
 
-<div class="header">
-  <div>Team A</div>
-  <div>VS</div>
-  <div>Team B</div>
-</div>
+<h2>Team Builder</h2>
 
 <div id="players"></div>
 
@@ -44,7 +39,7 @@ body{background:#0f172a;color:#fff;font-family:sans-serif;padding:12px}
 
 <script>
 
-// 🔥 Firebase config (replace)
+// 🔥 FIREBASE CONFIG (APNA DAL)
 firebase.initializeApp({
   apiKey:"XXX",
   authDomain:"XXX",
@@ -53,7 +48,8 @@ firebase.initializeApp({
 const db=firebase.firestore();
 const auth=firebase.auth();
 
-auth.signInAnonymously();
+let authReady=false;
+auth.signInAnonymously().then(()=>authReady=true);
 
 // ===== PLAYERS =====
 const roles=["WK","BAT","AR","BOWL"];
@@ -75,8 +71,8 @@ function render(){
 }
 
 function renderSection(role){
-  const A=players.filter(p=>p.role===role && p.team==="A");
-  const B=players.filter(p=>p.role===role && p.team==="B");
+  const A=players.filter(p=>p.role===role&&p.team==="A");
+  const B=players.filter(p=>p.role===role&&p.team==="B");
 
   let rows="";
   const max=Math.max(A.length,B.length);
@@ -109,6 +105,8 @@ function renderPlayer(p){
 function toggle(id){
   if(selected.includes(id)){
     selected=selected.filter(x=>x!==id);
+    if(captain===id) captain=null;
+    if(vc===id) vc=null;
   }else{
     if(selected.length>=11){alert("Max 11");return;}
     selected.push(id);
@@ -116,7 +114,7 @@ function toggle(id){
   render();
 }
 
-// ===== CAPTAIN =====
+// ===== STEP 2 =====
 function next(){
   if(selected.length!==11){alert("Select 11");return;}
 
@@ -134,17 +132,46 @@ function next(){
 }
 
 function setCV(id){
-  if(!captain) captain=id;
-  else if(!vc && id!==captain) vc=id;
-  else{
-    if(id===captain) captain=null;
-    if(id===vc) vc=null;
+
+  if(captain===id){
+    captain=null;
+    next();
+    return;
   }
-  next();
+
+  if(vc===id){
+    vc=null;
+    next();
+    return;
+  }
+
+  if(!captain){
+    captain=id;
+    next();
+    return;
+  }
+
+  if(!vc && id!==captain){
+    vc=id;
+    next();
+    return;
+  }
+
+  alert("Already selected C & VC");
 }
 
 // ===== SAVE TEAM =====
 async function saveTeam(){
+
+  if(!authReady){alert("Wait 2 sec");return;}
+
+  if(selected.length!==11){alert("Select 11");return;}
+
+  if(!captain||!vc||captain===vc){
+    alert("Invalid C/VC");
+    return;
+  }
+
   const uid=auth.currentUser.uid;
 
   const doc=await db.collection("teams").add({
@@ -152,15 +179,19 @@ async function saveTeam(){
   });
 
   lastTeamId=doc.id;
-  alert("Saved!");
+
+  alert("Team Saved!");
   loadTeams();
 }
 
 // ===== JOIN =====
 async function joinContest(){
-  const uid=auth.currentUser.uid;
+
+  if(!authReady){alert("Wait");return;}
 
   if(!lastTeamId){alert("Save team first");return;}
+
+  const uid=auth.currentUser.uid;
 
   await db.collection("contestEntries").add({
     uid,teamId:lastTeamId,points:0
@@ -179,8 +210,8 @@ async function loadTeams(){
     snap.docs.map(d=>"<div>Team "+d.id+"</div>").join('');
 }
 
+// INIT
 render();
-loadTeams();
 
 </script>
 
