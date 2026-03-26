@@ -2,105 +2,58 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cream11 Phase 3.2</title>
+<title>Cream11 Phase 4</title>
 
 <style>
 body{font-family:sans-serif;background:#0f172a;color:#fff;margin:0;padding:16px}
-.btn{padding:10px;background:#22c55e;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
-.row{display:flex;gap:10px}
-.col{flex:1}
-.player{padding:8px;border:1px solid #334155;border-radius:8px;margin-bottom:6px;cursor:pointer}
+.btn{padding:10px;background:#22c55e;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:10px}
+.player{padding:8px;border:1px solid #334155;border-radius:8px;margin:5px;cursor:pointer}
 .selected{background:#22c55e;color:#000}
 .disabled{opacity:0.4;pointer-events:none}
-.tab{padding:8px;border-radius:6px;background:#334155;cursor:pointer}
-.active{background:#22c55e;color:#000}
+.row{display:flex;gap:10px}
+.col{flex:1}
 </style>
 </head>
 
 <body>
 
-<!-- AUTH -->
-<div id="auth">
-  <h2 id="authTitle">Sign Up</h2>
+<h2 id="title">Team Builder</h2>
 
-  <div style="display:flex;gap:10px;margin-bottom:10px;">
-    <div class="tab active" onclick="switchAuth('signup')" id="signupTab">Sign Up</div>
-    <div class="tab" onclick="switchAuth('signin')" id="signinTab">Sign In</div>
-  </div>
+<button class="btn" onclick="logout()">Logout</button>
 
-  <div id="signupBox">
-    <input id="suName" placeholder="Name"><br><br>
-    <input id="suEmail" placeholder="Email"><br><br>
-    <input id="suPass" placeholder="Password" type="password"><br><br>
-    <button class="btn" onclick="signup()">Create Account</button>
-  </div>
-
-  <div id="signinBox" style="display:none;">
-    <input id="siEmail" placeholder="Email"><br><br>
-    <input id="siPass" placeholder="Password" type="password"><br><br>
-    <button class="btn" onclick="signin()">Sign In</button>
-  </div>
+<div id="step1">
+<div id="playersContainer"></div>
+<button class="btn" onclick="goToCaptain()">Next (Select Captain)</button>
 </div>
 
-<!-- APP -->
-<div id="app" style="display:none;">
-  <h2>Team Builder</h2>
-  <button class="btn" onclick="logout()">Logout</button>
+<div id="step2" style="display:none;">
+<h3>Select Captain (2x points)</h3>
+<div id="captainList"></div>
 
-  <!-- FILTER -->
-  <div style="display:flex;gap:6px;margin:10px 0;">
-    <button class="btn" onclick="setRole('ALL')">ALL</button>
-    <button class="btn" onclick="setRole('WK')">WK</button>
-    <button class="btn" onclick="setRole('BAT')">BAT</button>
-    <button class="btn" onclick="setRole('AR')">AR</button>
-    <button class="btn" onclick="setRole('BOWL')">BOWL</button>
-  </div>
+<h3>Select Vice Captain (1.5x)</h3>
+<div id="vcList"></div>
 
-  <div class="row">
-    <div class="col">
-      <h4>Team A</h4>
-      <div id="teamA"></div>
-    </div>
-
-    <div class="col">
-      <h4>Team B</h4>
-      <div id="teamB"></div>
-    </div>
-  </div>
-
-  <button class="btn" onclick="saveTeam()">Save Team</button>
-
-  <h3>My Teams</h3>
-  <div id="myTeams"></div>
+<button class="btn" onclick="saveTeam()">Save Team</button>
 </div>
+
+<h3>My Teams</h3>
+<div id="myTeams"></div>
+
+<h3>Join Contest</h3>
+<button class="btn" onclick="joinContest()">Join (10 coins)</button>
+
+<h3>My Contests</h3>
+<div id="myContests"></div>
 
 <script>
-// ===== AUTH UI =====
-function switchAuth(mode){
-  document.getElementById('signupBox').style.display = mode==='signup'?'block':'none';
-  document.getElementById('signinBox').style.display = mode==='signin'?'block':'none';
 
-  document.getElementById('signupTab').classList.toggle('active',mode==='signup');
-  document.getElementById('signinTab').classList.toggle('active',mode==='signin');
-}
-
-// ===== MOCK AUTH (Firebase later replace) =====
-function signup(){
-  localStorage.setItem('user','logged');
-  startApp();
-}
-function signin(){
-  localStorage.setItem('user','logged');
-  startApp();
-}
+// ===== AUTH (simple) =====
 function logout(){
   localStorage.removeItem('user');
   location.reload();
 }
-
-function startApp(){
-  document.getElementById('auth').style.display='none';
-  document.getElementById('app').style.display='block';
+if(!localStorage.getItem('user')){
+  localStorage.setItem('user','ok');
 }
 
 // ===== PLAYERS =====
@@ -118,70 +71,167 @@ const players=[
 {id:10,name:"Starc",team:"B",role:"BOWL",playing:false}
 ];
 
+const roles=["WK","BAT","AR","BOWL"];
+let openSections={WK:true,BAT:true,AR:true,BOWL:true};
+
 let selected=[];
-let currentRole='ALL';
+let captain=null;
+let vc=null;
 
 // ===== RENDER =====
 function render(){
-  document.getElementById('teamA').innerHTML=
-    players.filter(p=>p.team==='A').filter(filterRole).map(renderPlayer).join('');
-
-  document.getElementById('teamB').innerHTML=
-    players.filter(p=>p.team==='B').filter(filterRole).map(renderPlayer).join('');
+  document.getElementById('playersContainer').innerHTML =
+    roles.map(r=>renderSection(r)).join('');
 }
 
-function filterRole(p){
-  return currentRole==='ALL'||p.role===currentRole;
+function renderSection(role){
+  const teamA=players.filter(p=>p.role===role&&p.team==="A");
+  const teamB=players.filter(p=>p.role===role&&p.team==="B");
+
+  let rows="";
+  const max=Math.max(teamA.length,teamB.length);
+
+  for(let i=0;i<max;i++){
+    const a=teamA[i];
+    const b=teamB[i];
+
+    rows+=`
+    <div class="row">
+      <div class="col">${a?renderPlayer(a):""}</div>
+      <div class="col">${b?renderPlayer(b):""}</div>
+    </div>`;
+  }
+
+  return `
+  <div>
+    <div onclick="toggleSection('${role}')" style="cursor:pointer;">
+      ${openSections[role]?'▼':'▶'} ${role}
+    </div>
+    ${openSections[role]?rows:""}
+  </div>`;
 }
 
 function renderPlayer(p){
   return `
-    <div class="player ${selected.includes(p.id)?'selected':''} ${!p.playing?'disabled':''}"
+  <div class="player ${selected.includes(p.id)?'selected':''} ${!p.playing?'disabled':''}"
     onclick="toggle(${p.id})">
-      <b>${p.name}</b> (${p.role})
-      ${!p.playing?' - Not Playing':''}
-    </div>
-  `;
+    ${p.name} (${p.team})
+    ${!p.playing?" - Not Playing":""}
+  </div>`;
 }
 
-// ===== SELECT =====
 function toggle(id){
   const p=players.find(x=>x.id===id);
-
-  if(!p.playing){ alert("Not in playing 11"); return; }
+  if(!p.playing){alert("Not playing");return;}
 
   if(selected.includes(id)){
     selected=selected.filter(x=>x!==id);
   }else{
-    if(selected.length>=11){ alert("Max 11"); return; }
+    if(selected.length>=11){alert("Max 11");return;}
     selected.push(id);
   }
   render();
 }
 
-// ===== SAVE TEAM =====
-function saveTeam(){
-  const teams=JSON.parse(localStorage.getItem('teams')||"[]");
-  teams.push(selected);
-  localStorage.setItem('teams',JSON.stringify(teams));
-  loadTeams();
-}
-
-function loadTeams(){
-  const teams=JSON.parse(localStorage.getItem('teams')||"[]");
-  document.getElementById('myTeams').innerHTML=
-    teams.map(t=>"<div>"+t.join(", ")+"</div>").join("");
-}
-
-function setRole(r){
-  currentRole=r;
+function toggleSection(role){
+  openSections[role]=!openSections[role];
   render();
 }
 
+// ===== STEP 2 =====
+function goToCaptain(){
+  if(selected.length!==11){
+    alert("Select 11 players first");
+    return;
+  }
+
+  document.getElementById('step1').style.display='none';
+  document.getElementById('step2').style.display='block';
+
+  renderCaptainVC();
+}
+
+function renderCaptainVC(){
+  const playersList=selected.map(id=>players.find(p=>p.id===id));
+
+  document.getElementById('captainList').innerHTML=
+    playersList.map(p=>`
+      <div onclick="captain=${p.id};renderCaptainVC()" 
+        class="player ${captain===p.id?'selected':''}">
+        ${p.name}
+      </div>
+    `).join('');
+
+  document.getElementById('vcList').innerHTML=
+    playersList.map(p=>`
+      <div onclick="vc=${p.id};renderCaptainVC()" 
+        class="player ${vc===p.id?'selected':''}">
+        ${p.name}
+      </div>
+    `).join('');
+}
+
+// ===== SAVE TEAM =====
+function saveTeam(){
+  if(!captain||!vc||captain===vc){
+    alert("Select different C & VC");
+    return;
+  }
+
+  const teams=JSON.parse(localStorage.getItem('teams')||"[]");
+
+  teams.push({
+    players:selected,
+    captain,
+    vc
+  });
+
+  localStorage.setItem('teams',JSON.stringify(teams));
+
+  alert("Team Saved!");
+  loadTeams();
+}
+
+// ===== LOAD =====
+function loadTeams(){
+  const teams=JSON.parse(localStorage.getItem('teams')||"[]");
+
+  document.getElementById('myTeams').innerHTML=
+    teams.map(t=>`
+      <div>
+        Players: ${t.players.join(",")}<br>
+        C: ${t.captain} | VC: ${t.vc}
+      </div>
+    `).join('');
+}
+
+// ===== CONTEST =====
+let coins=100;
+
+function joinContest(){
+  if(coins<10){alert("Not enough coins");return;}
+
+  coins-=10;
+
+  const contests=JSON.parse(localStorage.getItem('contests')||"[]");
+  contests.push({time:Date.now()});
+  localStorage.setItem('contests',JSON.stringify(contests));
+
+  loadContests();
+}
+
+function loadContests(){
+  const contests=JSON.parse(localStorage.getItem('contests')||"[]");
+
+  document.getElementById('myContests').innerHTML=
+    contests.map(c=>"<div>Joined Contest</div>").join('');
+}
+
 // INIT
-if(localStorage.getItem('user')) startApp();
 render();
 loadTeams();
+loadContests();
+
 </script>
 
 </body>
