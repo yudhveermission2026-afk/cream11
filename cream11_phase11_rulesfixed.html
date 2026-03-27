@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cream11 Phase 11</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#0a0e1a;--bg2:#111827;--bg3:#1a2236;--card:#151d2e;
+  --accent:#f97316;--accent2:#fb923c;--green:#22c55e;--red:#ef4444;
+  --gold:#f59e0b;--text:#f1f5f9;--muted:#64748b;--border:#1e2d45;--yellow:#facc15;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+#authScreen{
+  background:linear-gradient(135deg,#0a0e1a 0%,#1a0a2e 50%,#0a1a0e 100%);
+  align-items:center;justify-content:center;gap:18px;position:relative;overflow:hidden;padding:20px;
+}
+#authScreen::before{
+  content:'';position:absolute;width:600px;height:600px;
+  background:radial-gradient(circle,rgba(249,115,22,.15) 0%,transparent 70%);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:72px;letter-spacing:4px;background:linear-gradient(135deg,#f97316,#fbbf24,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;position:relative;z-index:1}
+.tag{font-family:'Rajdhani',sans-serif;font-size:17px;color:var(--muted);letter-spacing:6px;text-transform:uppercase;position:relative;z-index:1}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:26px 20px;width:min(390px,94vw);position:relative;z-index:1}
+.login-card h2{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;margin-bottom:14px}
+.auth-tabs{display:flex;gap:8px;margin-bottom:14px}
+.tab-btn,.btn-main,.btn-secondary{
+  border:none;border-radius:12px;font-weight:700;cursor:pointer;
+}
+.tab-btn{flex:1;padding:12px;background:#324664;color:#fff}
+.tab-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.inp{width:100%;padding:13px 15px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px;margin-bottom:12px;outline:none}
+.inp:focus{border-color:var(--accent)}
+.btn-main{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:16px;font-family:'Rajdhani',sans-serif;letter-spacing:1px;text-transform:uppercase}
+.btn-secondary{padding:12px 16px;background:#324664;color:#fff}
+.auth-status,.status{
+  margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#10254f;color:#d9e6ff;font-size:14px
+}
+.auth-status.ok,.status.ok{background:#103a24;border-color:#1d6d42;color:#d6ffe3}
+.auth-status.bad,.status.bad{background:#3b131b;border-color:#6a2430;color:#ffd7db}
+.auth-status.warn,.status.warn{background:#3d3010;border-color:#7a6222;color:#ffefb0}
+.hidden{display:none!important}
+
+#appScreen{padding:16px;max-width:1200px;margin:0 auto;width:100%}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.title{font-family:'Rajdhani',sans-serif;font-size:34px;font-weight:700}
+.sub{color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+.step-chip{display:inline-block;margin-right:6px;margin-bottom:8px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#1f3561;color:#dbe7ff}
+.step-chip.active{background:var(--green);color:#04150a}
+.rules-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 14px}
+.rule-card{padding:10px;border:1px solid var(--border);border-radius:12px;background:#0b1b3e}
+.rule-name{font-size:12px;color:var(--muted);margin-bottom:4px}
+.rule-count{font-size:18px;font-weight:800}
+.header-row{display:grid;grid-template-columns:1fr 110px 1fr;gap:10px;align-items:center;margin-bottom:12px}
+.header-box{text-align:center;border:1px solid var(--border);background:#0b1b3e;border-radius:12px;padding:10px 12px;font-weight:800}
+.vs{text-align:center;color:var(--muted);font-weight:800}
+.section{border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.section-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#12295d;cursor:pointer;font-weight:800}
+.section-body{padding:10px;background:#0b1d43}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
+.slot-empty{min-height:58px}
+.player{min-height:58px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#091939;cursor:pointer}
+.player.disabled{opacity:.45;cursor:not-allowed}
+.player.selected{background:var(--green);color:#04150a;border-color:#1fb657}
+.player.captain{border:2px solid var(--gold)}
+.player.vc{border:2px solid #fb923c}
+.player-name{font-weight:800;display:block}
+.player-meta{font-size:12px;color:var(--muted)}
+.player.selected .player-meta{color:#163d24}
+.badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.badge{font-size:11px;line-height:1;padding:5px 7px;border-radius:999px;font-weight:800}
+.badge.sel{background:#083517;color:#92ffbd}
+.badge.c{background:var(--gold);color:#2b1b00}
+.badge.vc{background:#fb923c;color:#311500}
+.badge.np{background:#4f1820;color:#ffb0b8}
+.step-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.list-item{border:1px solid var(--border);background:#091939;border-radius:12px;padding:12px;margin-bottom:10px}
+.note{font-size:13px;color:#c8d7ff;margin-top:8px}
+@media (max-width:900px){
+  .grid-2,.rules-grid{grid-template-columns:1fr 1fr}
+  .row{grid-template-columns:1fr}
+  .header-row{grid-template-columns:1fr}
+  .vs{display:none}
+}
+@media (max-width:520px){
+  .grid-2,.rules-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="screen active">
+  <div class="logo">CREAM11</div>
+  <div class="tag">Play • Build • Test</div>
+
+  <div class="login-card">
+    <h2 id="authTitle">Create Account</h2>
+
+    <div class="auth-tabs">
+      <button id="signupTab" class="tab-btn active" onclick="switchAuth('signup')">Sign Up</button>
+      <button id="signinTab" class="tab-btn" onclick="switchAuth('signin')">Sign In</button>
+    </div>
+
+    <div id="signupBox">
+      <input class="inp" id="suName" type="text" placeholder="Full Name" />
+      <input class="inp" id="suEmail" type="email" placeholder="Email address" />
+      <input class="inp" id="suPassword" type="password" placeholder="Password (minimum 6 chars)" />
+      <button class="btn-main" onclick="signup()">Create Account</button>
+    </div>
+
+    <div id="signinBox" class="hidden">
+      <input class="inp" id="siEmail" type="email" placeholder="Email address" />
+      <input class="inp" id="siPassword" type="password" placeholder="Password" />
+      <button class="btn-main" onclick="signin()">Sign In</button>
+    </div>
+
+    <div id="authStatus" class="auth-status warn">Auth + full role validation integrated.</div>
+  </div>
+</div>
+
+<div id="appScreen" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="title">Team Builder</div>
+      <div id="userLine" class="sub">Logged in</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-secondary" onclick="resetBuilder()">New Team</button>
+      <button class="btn-secondary" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div>
+      <span id="chip1" class="step-chip active">1. Select Players</span>
+      <span id="chip2" class="step-chip">2. Captain / VC</span>
+      <span id="chip3" class="step-chip">3. Save / Join</span>
+    </div>
+
+    <div id="statusBox" class="status warn">Rules follow karo: WK 1-4, BAT 3-6, AR 1-4, BOWL 3-6, ek team se max 7.</div>
+
+    <div class="rules-grid">
+      <div class="rule-card"><div class="rule-name">WK</div><div id="wkCount" class="rule-count">0</div></div>
+      <div class="rule-card"><div class="rule-name">BAT</div><div id="batCount" class="rule-count">0</div></div>
+      <div class="rule-card"><div class="rule-name">AR</div><div id="arCount" class="rule-count">0</div></div>
+      <div class="rule-card"><div class="rule-name">BOWL</div><div id="bowlCount" class="rule-count">0</div></div>
+      <div class="rule-card"><div class="rule-name">Team A</div><div id="teamACount" class="rule-count">0</div></div>
+      <div class="rule-card"><div class="rule-name">Team B</div><div id="teamBCount" class="rule-count">0</div></div>
+      <div class="rule-card"><div class="rule-name">Selected</div><div id="selectedCount" class="rule-count">0/11</div></div>
+      <div class="rule-card"><div class="rule-name">Combination</div><div id="comboStatus" class="rule-count" style="color:#facc15">Incomplete</div></div>
+    </div>
+
+    <div class="note">Exact notifications: minimum WK/BAT/AR/BOWL, max per role, max 7 per side, exact 11 players.</div>
+
+    <div id="stage1">
+      <div class="header-row">
+        <div class="header-box">Team A</div>
+        <div class="vs">VS</div>
+        <div class="header-box">Team B</div>
+      </div>
+      <div id="playersContainer"></div>
+      <div class="step-actions">
+        <button class="btn-main" style="width:auto;padding:12px 16px" onclick="goToCaptainStage()">Next</button>
+      </div>
+    </div>
+
+    <div id="stage2" class="hidden">
+      <div class="header-row">
+        <div class="header-box">Selected Team A</div>
+        <div class="vs">C / VC</div>
+        <div class="header-box">Selected Team B</div>
+      </div>
+      <div class="sub">Pehla click = Captain, doosra alag player = Vice Captain. Dubara click karoge to remove ho jayega.</div>
+      <div id="cvContainer"></div>
+      <div class="step-actions">
+        <button class="btn-secondary" onclick="backToSelection()">Back</button>
+        <button class="btn-main" style="width:auto;padding:12px 16px" onclick="saveTeam()">Save Team</button>
+      </div>
+    </div>
+
+    <div id="stage3" class="hidden">
+      <div class="title" style="font-size:22px;">Saved Team Ready</div>
+      <div id="savedTeamPreview" class="sub">No team saved yet.</div>
+      <div class="step-actions">
+        <button class="btn-secondary" onclick="backToCaptainStage()">Back</button>
+        <button class="btn-main" style="width:auto;padding:12px 16px" onclick="joinContest()">Join Contest</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="title" style="font-size:22px;">My Teams</div>
+      <div id="teamsList" class="sub">No saved teams yet.</div>
+    </div>
+    <div class="card">
+      <div class="title" style="font-size:22px;">My Entries</div>
+      <div id="entriesList" class="sub">No contest entries yet.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDPhfbnDTu-ZOtnhjnJnITrNL_d6rzBIZI",
+  authDomain: "cream11-adbf2.firebaseapp.com",
+  projectId: "cream11-adbf2",
+  storageBucket: "cream11-adbf2.firebasestorage.app",
+  messagingSenderId: "266499865804",
+  appId: "1:266499865804:web:28c53f4618271f6e1dd669"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentUser = null;
+
+function storageKey(name){
+  return `${name}_${currentUser ? currentUser.uid : 'guest'}`;
+}
+
+function switchAuth(mode){
+  document.getElementById('signupBox').classList.toggle('hidden', mode !== 'signup');
+  document.getElementById('signinBox').classList.toggle('hidden', mode !== 'signin');
+  document.getElementById('signupTab').classList.toggle('active', mode === 'signup');
+  document.getElementById('signinTab').classList.toggle('active', mode === 'signin');
+  document.getElementById('authTitle').textContent = mode === 'signup' ? 'Create Account' : 'Welcome Back';
+}
+function authMsg(msg, type='warn'){
+  const el = document.getElementById('authStatus');
+  el.textContent = msg;
+  el.className = `auth-status ${type}`;
+}
+async function signup(){
+  try{
+    const name = document.getElementById('suName').value.trim();
+    const email = document.getElementById('suEmail').value.trim().toLowerCase();
+    const password = document.getElementById('suPassword').value.trim();
+    if(name.length < 3) return authMsg('Name minimum 3 letters ka daalo','bad');
+    if(!email.includes('@')) return authMsg('Valid email daalo','bad');
+    if(password.length < 6) return authMsg('Password minimum 6 chars ka hona chahiye','bad');
+
+    const cred = await auth.createUserWithEmailAndPassword(email, password);
+    await db.collection('users').doc(cred.user.uid).set({
+      uid: cred.user.uid,
+      username: name,
+      email,
+      coins: 1000,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:true});
+    authMsg('Signup successful ✅','ok');
+  }catch(err){
+    authMsg(err.message || 'Signup failed','bad');
+  }
+}
+async function signin(){
+  try{
+    const email = document.getElementById('siEmail').value.trim().toLowerCase();
+    const password = document.getElementById('siPassword').value.trim();
+    if(!email.includes('@')) return authMsg('Valid email daalo','bad');
+    if(!password) return authMsg('Password daalo','bad');
+    await auth.signInWithEmailAndPassword(email, password);
+    authMsg('Signin successful ✅','ok');
+  }catch(err){
+    authMsg(err.message || 'Signin failed','bad');
+  }
+}
+async function logout(){ await auth.signOut(); }
+
+auth.onAuthStateChanged(async (user)=>{
+  currentUser = user || null;
+  if(user){
+    let username = user.email || 'User';
+    try{
+      const snap = await db.collection('users').doc(user.uid).get();
+      if(snap.exists){
+        const data = snap.data();
+        username = data.username || data.email || username;
+      }
+    }catch(e){}
+    document.getElementById('userLine').textContent = `${username} • ${user.email || ''}`;
+    document.getElementById('authScreen').classList.remove('active');
+    document.getElementById('appScreen').classList.add('active');
+    resetBuilder(false);
+    loadTeams();
+    loadEntries();
+    renderSelection();
+  }else{
+    document.getElementById('appScreen').classList.remove('active');
+    document.getElementById('authScreen').classList.add('active');
+  }
+});
+
+const ROLES = ['WK','BAT','AR','BOWL'];
+const openSections = { WK:true, BAT:true, AR:true, BOWL:true };
+const RULES = {
+  WK:{min:1,max:4},
+  BAT:{min:3,max:6},
+  AR:{min:1,max:4},
+  BOWL:{min:3,max:6},
+  TEAM_MAX:7,
+  TOTAL:11
+};
+
+const players = [
+  {id:1,name:'Ishan',team:'A',role:'WK',playing:true},
+  {id:2,name:'Pant',team:'A',role:'WK',playing:true},
+  {id:3,name:'Buttler',team:'B',role:'WK',playing:true},
+  {id:4,name:'Bairstow',team:'B',role:'WK',playing:true},
+  {id:5,name:'Rohit',team:'A',role:'BAT',playing:true},
+  {id:6,name:'Gill',team:'A',role:'BAT',playing:true},
+  {id:7,name:'Surya',team:'A',role:'BAT',playing:true},
+  {id:8,name:'Warner',team:'B',role:'BAT',playing:true},
+  {id:9,name:'Smith',team:'B',role:'BAT',playing:true},
+  {id:10,name:'Root',team:'B',role:'BAT',playing:true},
+  {id:11,name:'Hardik',team:'A',role:'AR',playing:true},
+  {id:12,name:'Jadeja',team:'A',role:'AR',playing:true},
+  {id:13,name:'Stokes',team:'B',role:'AR',playing:true},
+  {id:14,name:'Maxwell',team:'B',role:'AR',playing:true},
+  {id:15,name:'Bumrah',team:'A',role:'BOWL',playing:true},
+  {id:16,name:'Shami',team:'A',role:'BOWL',playing:false},
+  {id:17,name:'Starc',team:'B',role:'BOWL',playing:true},
+  {id:18,name:'Cummins',team:'B',role:'BOWL',playing:true},
+  {id:19,name:'Siraj',team:'B',role:'BOWL',playing:true},
+  {id:20,name:'Kuldeep',team:'A',role:'BOWL',playing:true}
+];
+
+let selected = [];
+let captain = null;
+let viceCaptain = null;
+let currentSavedTeamId = null;
+
+function byId(id){ return players.find(p => p.id === id); }
+function getSelectedPlayers(){ return selected.map(byId).filter(Boolean); }
+function getCounts(){
+  const sel = getSelectedPlayers();
+  return {
+    WK: sel.filter(p => p.role==='WK').length,
+    BAT: sel.filter(p => p.role==='BAT').length,
+    AR: sel.filter(p => p.role==='AR').length,
+    BOWL: sel.filter(p => p.role==='BOWL').length,
+    A: sel.filter(p => p.team==='A').length,
+    B: sel.filter(p => p.team==='B').length,
+    TOTAL: sel.length
+  };
+}
+function validateCombination(){
+  const c = getCounts();
+  const reasons = [];
+
+  if(c.WK < RULES.WK.min) reasons.push(`Min ${RULES.WK.min} WK chahiye`);
+  if(c.WK > RULES.WK.max) reasons.push(`Max ${RULES.WK.max} WK allowed`);
+
+  if(c.BAT < RULES.BAT.min) reasons.push(`Min ${RULES.BAT.min} BAT chahiye`);
+  if(c.BAT > RULES.BAT.max) reasons.push(`Max ${RULES.BAT.max} BAT allowed`);
+
+  if(c.AR < RULES.AR.min) reasons.push(`Min ${RULES.AR.min} AR chahiye`);
+  if(c.AR > RULES.AR.max) reasons.push(`Max ${RULES.AR.max} AR allowed`);
+
+  if(c.BOWL < RULES.BOWL.min) reasons.push(`Min ${RULES.BOWL.min} BOWL chahiye`);
+  if(c.BOWL > RULES.BOWL.max) reasons.push(`Max ${RULES.BOWL.max} BOWL allowed`);
+
+  if(c.A > RULES.TEAM_MAX) reasons.push(`Team A se max ${RULES.TEAM_MAX}`);
+  if(c.B > RULES.TEAM_MAX) reasons.push(`Team B se max ${RULES.TEAM_MAX}`);
+
+  if(c.TOTAL !== RULES.TOTAL) reasons.push(`Exactly ${RULES.TOTAL} players chahiye`);
+
+  return {
+    valid: reasons.length === 0,
+    reasons,
+    counts: c
+  };
+}
+function setStatus(msg){
+  const el = document.getElementById('statusBox');
+  el.textContent = msg;
+  el.className = 'status';
+}
+function setStep(step){
+  document.getElementById('chip1').classList.toggle('active', step === 1);
+  document.getElementById('chip2').classList.toggle('active', step === 2);
+  document.getElementById('chip3').classList.toggle('active', step === 3);
+  document.getElementById('stage1').classList.toggle('hidden', step !== 1);
+  document.getElementById('stage2').classList.toggle('hidden', step !== 2);
+  document.getElementById('stage3').classList.toggle('hidden', step !== 3);
+}
+function updateRuleBoard(){
+  const v = validateCombination();
+  document.getElementById('wkCount').textContent = `${v.counts.WK}`;
+  document.getElementById('batCount').textContent = `${v.counts.BAT}`;
+  document.getElementById('arCount').textContent = `${v.counts.AR}`;
+  document.getElementById('bowlCount').textContent = `${v.counts.BOWL}`;
+  document.getElementById('teamACount').textContent = `${v.counts.A}`;
+  document.getElementById('teamBCount').textContent = `${v.counts.B}`;
+  document.getElementById('selectedCount').textContent = `${v.counts.TOTAL}/${RULES.TOTAL}`;
+  const combo = document.getElementById('comboStatus');
+  if(v.valid){ combo.textContent='Valid'; combo.style.color='#8cffbd'; }
+  else if(v.counts.TOTAL===RULES.TOTAL){ combo.textContent='Invalid'; combo.style.color='#ffb4b4'; }
+  else { combo.textContent='Incomplete'; combo.style.color='#facc15'; }
+}
+function renderSelection(){
+  document.getElementById('playersContainer').innerHTML = ROLES.map(role => renderRoleSection(role)).join('');
+  updateRuleBoard();
+  const v = validateCombination();
+  if(v.valid){
+    setStatus('Valid combination ✅ Ab Next kar sakte ho.');
+  }else{
+    setStatus(v.reasons[0] || 'Players select karo.');
+  }
+}
+function renderRoleSection(role){
+  const teamA = players.filter(p => p.role===role && p.team==='A');
+  const teamB = players.filter(p => p.role===role && p.team==='B');
+  const maxLen = Math.max(teamA.length, teamB.length);
+  let rows = '';
+  for(let i=0;i<maxLen;i++){
+    rows += `<div class="row"><div>${teamA[i]?renderSelectionPlayer(teamA[i]):'<div class="slot-empty"></div>'}</div><div>${teamB[i]?renderSelectionPlayer(teamB[i]):'<div class="slot-empty"></div>'}</div></div>`;
+  }
+  return `<div class="section"><div class="section-head" onclick="toggleSection('${role}')"><span>${openSections[role]?'▼':'▶'} ${role}</span><span>${countSelectedByRole(role)} selected</span></div>${openSections[role]?`<div class="section-body">${rows}</div>`:''}</div>`;
+}
+function renderSelectionPlayer(p){
+  const isSelected = selected.includes(p.id);
+  return `<div class="player ${isSelected?'selected':''} ${!p.playing?'disabled':''}" onclick="togglePlayer(${p.id})"><div><span class="player-name">${p.name}</span><span class="player-meta">Team ${p.team}</span></div><div class="badges">${isSelected?'<span class="badge sel">Selected</span>':''}${!p.playing?'<span class="badge np">Not Playing</span>':''}</div></div>`;
+}
+function toggleSection(role){ openSections[role] = !openSections[role]; renderSelection(); }
+function countSelectedByRole(role){ return selected.map(byId).filter(Boolean).filter(p => p.role===role).length; }
+function canAddPlayer(player){
+  const c = getCounts();
+  if(c.TOTAL >= RULES.TOTAL) return {ok:false, msg:'Maximum 11 players hi select ho sakte'};
+  if(player.team === 'A' && c.A >= RULES.TEAM_MAX) return {ok:false, msg:`Team A se max ${RULES.TEAM_MAX} players allowed`};
+  if(player.team === 'B' && c.B >= RULES.TEAM_MAX) return {ok:false, msg:`Team B se max ${RULES.TEAM_MAX} players allowed`};
+
+  const roleCount = c[player.role];
+  const roleMax = RULES[player.role].max;
+  if(roleCount >= roleMax) return {ok:false, msg:`Max ${roleMax} ${player.role} allowed`};
+
+  return {ok:true, msg:''};
+}
+function togglePlayer(id){
+  const player = byId(id);
+  if(!player) return;
+  if(!player.playing){ setStatus('Not playing player select nahi kar sakte.','bad'); return; }
+  if(selected.includes(id)){
+    selected = selected.filter(x => x !== id);
+    if(captain===id) captain=null;
+    if(viceCaptain===id) viceCaptain=null;
+    renderSelection();
+    return;
+  }
+  const check = canAddPlayer(player);
+  if(!check.ok){ setStatus(check.msg,'bad'); return; }
+  selected.push(id);
+  renderSelection();
+}
+function goToCaptainStage(){
+  const v = validateCombination();
+  if(!v.valid){
+    setStatus(v.reasons[0] || 'Invalid combination.');
+    return;
+  }
+  setStep(2);
+  renderCV();
+  setStatus('Ab Captain aur Vice Captain choose karo.');
+}
+function backToSelection(){ setStep(1); renderSelection(); }
+function backToCaptainStage(){ setStep(2); renderCV(); setStatus('Captain / VC edit kar sakte ho.','warn'); }
+function renderCV(){
+  const selectedPlayers = getSelectedPlayers();
+  const teamA = selectedPlayers.filter(p => p.team==='A');
+  const teamB = selectedPlayers.filter(p => p.team==='B');
+  const maxLen = Math.max(teamA.length, teamB.length);
+  let rows = '';
+  for(let i=0;i<maxLen;i++){
+    rows += `<div class="row"><div>${teamA[i]?renderCVPlayer(teamA[i]):'<div class="slot-empty"></div>'}</div><div>${teamB[i]?renderCVPlayer(teamB[i]):'<div class="slot-empty"></div>'}</div></div>`;
+  }
+  document.getElementById('cvContainer').innerHTML = rows;
+}
+function renderCVPlayer(p){
+  return `<div class="player ${captain===p.id?'captain':''} ${viceCaptain===p.id?'vc':''}" onclick="selectCV(${p.id})"><div><span class="player-name">${p.name}</span><span class="player-meta">Team ${p.team}</span></div><div class="badges">${captain===p.id?'<span class="badge c">C</span>':''}${viceCaptain===p.id?'<span class="badge vc">VC</span>':''}</div></div>`;
+}
+function selectCV(id){
+  if(!selected.includes(id)){ setStatus('Ye player selected 11 me nahi hai.','bad'); return; }
+  if(captain===id){ captain=null; renderCV(); setStatus('Captain remove ho gaya.','warn'); return; }
+  if(viceCaptain===id){ viceCaptain=null; renderCV(); setStatus('Vice Captain remove ho gaya.','warn'); return; }
+  if(captain===null){ captain=id; renderCV(); setStatus('Captain select ho gaya. Ab doosra alag player Vice Captain banao.','warn'); return; }
+  if(viceCaptain===null && id!==captain){ viceCaptain=id; renderCV(); setStatus('Captain aur Vice Captain dono select ho gaye. Ab Save Team karo.','ok'); return; }
+  setStatus('Captain aur VC already selected hain. Kisi ek ko dubara click karke remove karo.','bad');
+}
+
+function getTeams(){ return JSON.parse(localStorage.getItem(storageKey('teams')) || '[]'); }
+function setTeams(data){ localStorage.setItem(storageKey('teams'), JSON.stringify(data)); }
+function getEntries(){ return JSON.parse(localStorage.getItem(storageKey('entries')) || '[]'); }
+function setEntries(data){ localStorage.setItem(storageKey('entries'), JSON.stringify(data)); }
+
+function saveTeam(){
+  const v = validateCombination();
+  if(!v.valid){
+    setStatus(v.reasons[0] || 'Invalid team combination.');
+    return;
+  }
+  if(!captain || !viceCaptain){
+    setStatus('Captain aur Vice Captain dono select karo.');
+    return;
+  }
+  if(captain === viceCaptain){
+    setStatus('Captain aur Vice Captain same nahi ho sakte.');
+    return;
+  }
+
+  const teamId = 'TEAM-' + Date.now();
+  const payload = {
+    id: teamId,
+    players: [...selected],
+    captain,
+    viceCaptain,
+    createdAt: Date.now()
+  };
+
+  const teams = getTeams();
+  teams.unshift(payload);
+  setTeams(teams);
+  currentSavedTeamId = teamId;
+
+  renderSavedPreview(payload);
+  loadTeams();
+  setStep(3);
+  setStatus('Team saved successfully ✅ Ab Join Contest kar sakte ho.');
+}
+function renderSavedPreview(team){
+  const playerNames = team.players.map(id => byId(id)?.name || id).join(', ');
+  const capName = byId(team.captain)?.name || team.captain;
+  const vcName = byId(team.viceCaptain)?.name || team.viceCaptain;
+  document.getElementById('savedTeamPreview').innerHTML = `<div class="list-item"><div><strong>Team ID:</strong> ${team.id}</div><div><strong>Players:</strong> ${playerNames}</div><div><strong>C:</strong> ${capName} &nbsp; <strong>VC:</strong> ${vcName}</div></div>`;
+}
+function joinContest(){
+  if(!currentSavedTeamId){ setStatus('Pehle valid team save karo.','bad'); return; }
+  const entries = getEntries();
+  if(entries.some(entry => entry.teamId === currentSavedTeamId)){ setStatus('Ye team already contest join kar chuki hai.','bad'); return; }
+  const entry = {id:'ENTRY-' + Date.now(), teamId:currentSavedTeamId, points:0, createdAt:Date.now()};
+  entries.unshift(entry); setEntries(entries); loadEntries(); setStatus('Contest joined successfully ✅','ok');
+}
+function loadTeams(){
+  const teams = getTeams();
+  const box = document.getElementById('teamsList');
+  if(!teams.length){ box.innerHTML = 'No saved teams yet.'; return; }
+  box.innerHTML = teams.map(team => {
+    const names = team.players.map(id => byId(id)?.name || id).join(', ');
+    const capName = byId(team.captain)?.name || team.captain;
+    const vcName = byId(team.viceCaptain)?.name || team.viceCaptain;
+    return `<div class="list-item"><div><strong>${team.id}</strong></div><div class="sub">${names}</div><div><strong>C:</strong> ${capName} &nbsp; <strong>VC:</strong> ${vcName}</div></div>`;
+  }).join('');
+}
+function loadEntries(){
+  const entries = getEntries();
+  const box = document.getElementById('entriesList');
+  if(!entries.length){ box.innerHTML = 'No contest entries yet.'; return; }
+  box.innerHTML = entries.map(entry => `<div class="list-item"><div><strong>${entry.id}</strong></div><div><strong>Team:</strong> ${entry.teamId}</div><div><strong>Points:</strong> ${entry.points}</div></div>`).join('');
+}
+function resetBuilder(showMsg=true){
+  selected=[]; captain=null; viceCaptain=null; currentSavedTeamId=null;
+  setStep(1); renderSelection();
+  document.getElementById('savedTeamPreview').innerHTML = 'No team saved yet.';
+  if(showMsg) setStatus('Builder reset ho gaya.','warn');
+}
+
+switchAuth('signup');
+</script>
+</body>
+</html>
